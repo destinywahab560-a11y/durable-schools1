@@ -19,7 +19,7 @@ export default function TeacherAttendance() {
     queryFn: async () => {
       const { data } = await supabase
         .from('classrooms')
-        .select('id, class_id, class:classes(name, arm, stream), subject:subjects(name)')
+        .select('id, class_id, subject_id, class:classes(name, arm, stream), subject:subjects(name)')
         .eq('teacher_id', teacherId)
       return data ?? []
     },
