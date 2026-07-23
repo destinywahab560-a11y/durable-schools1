@@ -23,8 +23,7 @@ export default function AuthPage() {
   const [signInPassword, setSignInPassword] = useState('')
 
   // Sign-up form
-  const [schoolName, setSchoolName] = useState('')
-  const [schoolMotto, setSchoolMotto] = useState('')
+  const [branch, setBranch] = useState<'DFS-PRIMARY' | 'DCHS-SECONDARY'>('DFS-PRIMARY')
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
   const [email, setEmail] = useState('')
@@ -61,15 +60,14 @@ export default function AuthPage() {
 
     try {
       if (role === 'admin') {
-        // Create school first
-        const code = 'DS-' + Math.random().toString(36).substring(2, 8).toUpperCase()
+        // Look up the selected branch (pre-seeded, fixed — not created here)
         const { data: schoolData, error: schoolError } = await supabase
           .from('schools')
-          .insert({ name: schoolName, code, motto: schoolMotto })
-          .select()
-          .single()
+          .select('id')
+          .eq('code', branch)
+          .maybeSingle()
 
-        if (schoolError) throw schoolError
+        if (schoolError || !schoolData) throw new Error('Could not find that school branch. Please contact support.')
 
         const { error } = await signUp(email, password, {
           role: 'admin',
@@ -80,7 +78,7 @@ export default function AuthPage() {
         })
 
         if (error) throw new Error(error)
-        toast.success(`School created! Your school code is ${code}`)
+        toast.success('Account created!')
         navigate('/admin')
       } else {
         // Non-admin: need school code
@@ -174,7 +172,7 @@ export default function AuthPage() {
                     <label className="label">I am a...</label>
                     <div className="grid grid-cols-2 gap-3">
                       {[
-                        { value: 'admin', label: 'School Admin', desc: 'Create a new school' },
+                        { value: 'admin', label: 'School Admin', desc: 'Manage a branch' },
                         { value: 'teacher', label: 'Teacher', desc: 'Join a school' },
                         { value: 'student', label: 'Student', desc: 'Join a school' },
                         { value: 'parent', label: 'Parent', desc: 'Monitor children' }
@@ -204,26 +202,38 @@ export default function AuthPage() {
               {step === 2 && (
                 <>
                   {role === 'admin' && (
-                    <>
-                      <div>
-                        <label className="label">School Name</label>
-                        <div className="relative">
-                          <School className="absolute left-3 top-3 w-5 h-5 text-brown-300" />
-                          <input required value={schoolName} onChange={(e) => setSchoolName(e.target.value)} className="input pl-10" placeholder="e.g. Durable Academy" />
-                        </div>
+                    <div>
+                      <label className="label">Which branch are you registering as Admin for?</label>
+                      <div className="grid grid-cols-1 gap-3">
+                        {[
+                          { value: 'DFS-PRIMARY', label: 'Durable Foundation School', desc: 'Primary' },
+                          { value: 'DCHS-SECONDARY', label: 'Durable Comprehensive High School', desc: 'Secondary' }
+                        ].map((b) => (
+                          <button
+                            key={b.value}
+                            type="button"
+                            onClick={() => setBranch(b.value as typeof branch)}
+                            className={cn(
+                              'p-4 rounded-lg border-2 text-left transition-all flex items-center gap-3',
+                              branch === b.value ? 'border-brown-600 bg-brown-50' : 'border-cream-400 hover:border-brown-300'
+                            )}
+                          >
+                            <School className="w-5 h-5 text-brown-400" />
+                            <div>
+                              <p className="font-semibold text-brown-700 text-sm">{b.label}</p>
+                              <p className="text-xs text-brown-400">{b.desc}</p>
+                            </div>
+                          </button>
+                        ))}
                       </div>
-                      <div>
-                        <label className="label">School Motto (optional)</label>
-                        <input value={schoolMotto} onChange={(e) => setSchoolMotto(e.target.value)} className="input" placeholder="e.g. Knowledge • Integrity • Service" />
-                      </div>
-                    </>
+                    </div>
                   )}
 
                   {role !== 'admin' && (
                     <div>
                       <label className="label">School Code</label>
-                      <input required value={schoolCode} onChange={(e) => setSchoolCode(e.target.value)} className="input" placeholder="e.g. DS-AB12CD" />
-                      <p className="text-xs text-brown-400 mt-1">Ask your school administrator for this code.</p>
+                      <input required value={schoolCode} onChange={(e) => setSchoolCode(e.target.value)} className="input" placeholder="e.g. DFS-PRIMARY" />
+                      <p className="text-xs text-brown-400 mt-1">Ask your school administrator for your branch's code.</p>
                     </div>
                   )}
 
