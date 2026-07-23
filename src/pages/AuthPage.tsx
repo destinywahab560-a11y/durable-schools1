@@ -24,6 +24,7 @@ export default function AuthPage() {
 
   // Sign-up form
   const [branch, setBranch] = useState<'DFS-PRIMARY' | 'DCHS-SECONDARY'>('DFS-PRIMARY')
+  const [inviteCode, setInviteCode] = useState('')
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
   const [email, setEmail] = useState('')
@@ -60,21 +61,13 @@ export default function AuthPage() {
 
     try {
       if (role === 'admin') {
-        // Look up the selected branch (pre-seeded, fixed — not created here)
-        const { data: schoolData, error: schoolError } = await supabase
-          .from('schools')
-          .select('id')
-          .eq('code', branch)
-          .maybeSingle()
-
-        if (schoolError || !schoolData) throw new Error('Could not find that school branch. Please contact support.')
-
         const { error } = await signUp(email, password, {
           role: 'admin',
           first_name: firstName,
           last_name: lastName,
           phone,
-          school_id: schoolData.id
+          school_code: branch,
+          invite_code: inviteCode
         })
 
         if (error) throw new Error(error)
@@ -225,6 +218,14 @@ export default function AuthPage() {
                             </div>
                           </button>
                         ))}
+                      </div>
+                      <div className="mt-3">
+                        <label className="label">Admin Invite Code</label>
+                        <div className="relative">
+                          <Lock className="absolute left-3 top-3 w-5 h-5 text-brown-300" />
+                          <input required value={inviteCode} onChange={(e) => setInviteCode(e.target.value)} className="input pl-10" placeholder="Provided separately by the school" />
+                        </div>
+                        <p className="text-xs text-brown-400 mt-1">This is different from the School Code — ask whoever set up the platform.</p>
                       </div>
                     </div>
                   )}
