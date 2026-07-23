@@ -82,19 +82,37 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     if (error) return { error: error.message }
     if (!data.user) return { error: 'Sign-up failed — no user returned.' }
 
-    // Insert profile row
-    const { error: profileError } = await supabase.from('profiles').insert({
-      id: data.user.id,
-      role: metadata.role,
-      first_name: metadata.first_name,
-      last_name: metadata.last_name,
-      email,
-      phone: metadata.phone ?? null,
-      school_id: metadata.school_id ?? null
-    })
-    if (profileError) {
-      console.error('Profile insert error:', profileError)
-      return { error: profileError.message }
+    if (metadata.role === 'admin') {
+      // Admin profiles can only be created through this invite-gated
+      // function — it checks the admin invite code server-side before
+      // creating the profile, and raises an error if it's wrong.
+      const { error: rpcError } = await supabase.rpc('register_school_admin', {
+        p_school_code: metadata.school_code,
+        p_invite_code: metadata.invite_code,
+        p_first_name: metadata.first_name,
+        p_last_name: metadata.last_name,
+        p_phone: metadata.phone ?? null,
+        p_email: email
+      })
+      if (rpcError) {
+        console.error('Admin registration error:', rpcError)
+        return { error: rpcError.message }
+      }
+    } else {
+      // Insert profile row directly (unchanged for teacher/student/parent)
+      const { error: profileError } = await supabase.from('profiles').insert({
+        id: data.user.id,
+        role: metadata.role,
+        first_name: metadata.first_name,
+        last_name: metadata.last_name,
+        email,
+        phone: metadata.phone ?? null,
+        school_id: metadata.school_id ?? null
+      })
+      if (profileError) {
+        console.error('Profile insert error:', profileError)
+        return { error: profileError.message }
+      }
     }
 
     await get().refreshProfile()
