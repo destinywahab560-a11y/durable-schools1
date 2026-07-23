@@ -1,0 +1,80 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    @apply bg-cream-100 text-brown-700 font-sans antialiased;
+  }
+  h1, h2, h3, h4 {
+    @apply font-display text-brown-800;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .btn-primary {
+    @apply bg-brown-600 text-cream-100 hover:bg-brown-700 active:scale-[0.98] shadow-sm;
+  }
+  .btn-secondary {
+    @apply bg-amber-400 text-brown-800 hover:bg-amber-500 active:scale-[0.98] shadow-sm;
+  }
+  .btn-outline {
+    @apply border-2 border-brown-300 text-brown-700 hover:bg-brown-50 active:scale-[0.98];
+  }
+  .btn-ghost {
+    @apply text-brown-600 hover:bg-brown-50 active:scale-[0.98];
+  }
+  .btn-danger {
+    @apply bg-error-500 text-white hover:bg-error-600 active:scale-[0.98];
+  }
+  .card {
+    @apply bg-cream-50 rounded-xl shadow-sm border border-cream-300 p-5;
+  }
+  .input {
+    @apply w-full px-4 py-2.5 rounded-lg border border-cream-400 bg-cream-50 text-brown-700 placeholder-brown-200 focus:outline-none focus:ring-2 focus:ring-brown-400 focus:border-transparent transition-all;
+  }
+  .label {
+    @apply block text-sm font-medium text-brown-600 mb-1.5;
+  }
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+  .badge-brown {
+    @apply bg-brown-100 text-brown-700;
+  }
+  .badge-amber {
+    @apply bg-amber-100 text-amber-600;
+  }
+  .badge-sage {
+    @apply bg-sage-100 text-sage-500;
+  }
+  .badge-error {
+    @apply bg-error-100 text-error-600;
+  }
+  .sidebar-link {
+    @apply flex items-center gap-3 px-4 py-3 rounded-lg text-brown-600 hover:bg-brown-50 transition-colors font-medium;
+  }
+  .sidebar-link-active {
+    @apply bg-brown-600 text-cream-100 hover:bg-brown-700;
+  }
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: #FAF5EB; }
+::-webkit-scrollbar-thumb { background: #D0AB87; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #B5885A; }
+
+/* Grid paper texture */
+.bg-grid-paper {
+  background-image:
+    linear-gradient(#EFDDB8 1px, transparent 1px),
+    linear-gradient(90deg, #EFDDB8 1px, transparent 1px);
+  background-size: 24px 24px;
+}
