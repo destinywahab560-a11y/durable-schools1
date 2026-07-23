@@ -27,7 +27,7 @@ export default function TeacherAssessments() {
     queryFn: async () => {
       const { data } = await supabase
         .from('classrooms')
-        .select('id, name, class:classes(name, arm), subject:subjects(name)')
+        .select('id, name, subject_id, class:classes(name, arm), subject:subjects(name)')
         .eq('teacher_id', teacherId)
         .order('name')
       return data ?? []
@@ -41,7 +41,7 @@ export default function TeacherAssessments() {
       const { data } = await supabase
         .from('assessments')
         .select(`
-          id, title, type, total_marks, is_published, open_at, close_at,
+          id, title, type, total_marks, is_published, open_at, close_at, classroom_id,
           classroom:classrooms(name, class:classes(name, arm), subject:subjects(name))
         `)
         .in('classroom_id', classrooms?.map((c) => c.id) ?? [])
@@ -75,8 +75,9 @@ export default function TeacherAssessments() {
     e.preventDefault()
     if (!selectedAssessment) return
 
-    const classroom = classrooms?.find((c: any) => c.id === assessments?.find((a: any) => a.id === selectedAssessment)?.classroom_id)
-    const subjectId = (classroom as any)?.subject?.id
+    const targetClassroomId = assessments?.find((a: any) => a.id === selectedAssessment)?.classroom_id
+    const classroom = classrooms?.find((c: any) => c.id === targetClassroomId)
+    const subjectId = (classroom as any)?.subject_id
     if (!subjectId || !profile?.school_id) return
 
     const { data: question, error: qErr } = await supabase.from('questions').insert({
