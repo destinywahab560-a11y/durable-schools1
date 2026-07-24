@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { supabase } from '@/lib/supabase'
+import { supabase, signUpWithoutSessionSwap } from '@/lib/supabase'
 import { useAuthStore } from '@/stores/auth'
 import { PageHeader, Modal, Spinner, EmptyState } from '@/components/ui'
 import { getInitials } from '@/lib/utils'
@@ -31,11 +31,11 @@ export default function AdminStaff() {
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: form.email,
-        password: form.password,
-        options: { data: { role: 'teacher', first_name: form.first_name, last_name: form.last_name } }
-      })
+      const { data: authData, error: authError } = await signUpWithoutSessionSwap(
+        form.email,
+        form.password,
+        { role: 'teacher', first_name: form.first_name, last_name: form.last_name }
+      )
       if (authError) throw authError
       if (!authData.user) throw new Error('Failed to create user')
 
@@ -55,6 +55,7 @@ export default function AdminStaff() {
       setForm({ first_name: '', last_name: '', email: '', phone: '', password: '' })
       queryClient.invalidateQueries({ queryKey: ['staff', schoolId] })
     } catch (err) {
+      console.error('Add teacher error:', err)
       toast.error(err instanceof Error ? err.message : 'Failed to create teacher')
     }
   }
