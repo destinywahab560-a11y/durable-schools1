@@ -43,7 +43,7 @@ export default function AdminStudents() {
         .select(`
           id, first_name, last_name, email, phone, is_active,
           enrollments:student_enrollments!student_id(
-            admission_number,
+            id, admission_number, parent_id,
             class:classes(name, arm, stream)
           )
         `)
@@ -125,6 +125,39 @@ export default function AdminStudents() {
     setForm((prev) => ({ ...prev, class_id: classId, admission_number: admissionNumber }))
   }
 
+  const [linkParentTarget, setLinkParentTarget] = useState<{ enrollmentId: string; studentName: string } | null>(null)
+  const [parentEmail, setParentEmail] = useState('')
+
+  const handleLinkParent = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!linkParentTarget) return
+    try {
+      const { data: parent, error: parentErr } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('email', parentEmail)
+        .eq('role', 'parent')
+        .eq('school_id', schoolId)
+        .maybeSingle()
+      if (parentErr) throw parentErr
+      if (!parent) throw new Error('No parent account found with that email on this branch. Have them sign up first, then try again.')
+
+      const { error: updateErr } = await supabase
+        .from('student_enrollments')
+        .update({ parent_id: parent.id })
+        .eq('id', linkParentTarget.enrollmentId)
+      if (updateErr) throw updateErr
+
+      toast.success('Parent linked!')
+      setLinkParentTarget(null)
+      setParentEmail('')
+      queryClient.invalidateQueries({ queryKey: ['students', schoolId] })
+    } catch (err) {
+      console.error('Link parent error:', err)
+      toast.error(err instanceof Error ? err.message : 'Failed to link parent')
+    }
+  }
+
   if (isLoading) return <Spinner />
 
   return (
@@ -148,9 +181,22 @@ export default function AdminStudents() {
                   </p>
                 </div>
               </div>
-              <span className={`badge ${s.is_active ? 'badge-sage' : 'badge-error'}`}>
-                {s.is_active ? 'Active' : 'Inactive'}
-              </span>
+              <div className="flex items-center gap-3">
+                {s.enrollments?.[0]?.parent_id ? (
+                  <span className="badge badge-sage">Parent linked</span>
+                ) : (
+                  <button
+                    className="btn btn-secondary text-sm"
+                    onClick={() => setLinkParentTarget({ enrollmentId: s.enrollments?.[0]?.id, studentName: `${s.first_name} ${s.last_name}` })}
+                    disabled={!s.enrollments?.[0]?.id}
+                  >
+                    Link Parent
+                  </button>
+                )}
+                <span className={`badge ${s.is_active ? 'badge-sage' : 'badge-error'}`}>
+                  {s.is_active ? 'Active' : 'Inactive'}
+                </span>
+              </div>
             </div>
           ))}
         </div>
@@ -158,6 +204,20 @@ export default function AdminStudents() {
         <EmptyState icon={GraduationCap} title="No students yet" description="Enroll your first student."
           action={<button className="btn btn-primary" onClick={() => setModalOpen(true)}><Plus className="w-4 h-4" /> Enroll Student</button>} />
       )}
+
+      <Modal open={!!linkParentTarget} onClose={() => { setLinkParentTarget(null); setParentEmail('') }} title="Link Parent">
+        <form onSubmit={handleLinkParent} className="space-y-4">
+          <p className="text-sm text-brown-500">
+            Linking a parent to <span className="font-semibold">{linkParentTarget?.studentName}</span>.
+            The parent must already have their own account (Sign Up → Parent) before this will work.
+          </p>
+          <div>
+            <label className="label">Parent's Email</label>
+            <input required type="email" value={parentEmail} onChange={(e) => setParentEmail(e.target.value)} className="input" placeholder="parent@email.com" />
+          </div>
+          <button type="submit" className="btn btn-primary w-full">Link Parent</button>
+        </form>
+      </Modal>
 
       <Modal open={modalOpen} onClose={() => setModalOpen(false)} title="Enroll Student" size="lg">
         <form onSubmit={handleCreate} className="space-y-4">
