@@ -14,15 +14,19 @@ export default function ParentDashboard() {
   const { data: children, isLoading } = useQuery({
     queryKey: ['my-children', parentId],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('student_enrollments')
         .select(`
           student_id,
-          student:profiles(id, first_name, last_name, email),
+          student:profiles!student_id(id, first_name, last_name, email),
           class:classes(name, arm, stream),
           admission_number
         `)
         .eq('parent_id', parentId)
+      if (error) {
+        console.error('Fetch linked children error:', error)
+        throw error
+      }
       return data ?? []
     },
     enabled: !!parentId
