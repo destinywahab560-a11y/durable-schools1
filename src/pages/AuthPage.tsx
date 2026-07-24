@@ -3,7 +3,6 @@ import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { useAuthStore } from '@/stores/auth'
 import { supabase } from '@/lib/supabase'
 import { cn } from '@/lib/utils'
-import { NIGERIAN_CLASSES, SS_STREAMS } from '@/lib/utils'
 import toast from 'react-hot-toast'
 import { ArrowLeft, School, Mail, Phone, Lock, User as UserIcon } from 'lucide-react'
 
