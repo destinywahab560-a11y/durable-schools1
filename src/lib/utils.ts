@@ -40,6 +40,17 @@ export const NIGERIAN_CLASSES = [
   'SS 1', 'SS 2', 'SS 3'
 ]
 
+export const PRIMARY_CLASSES = ['Primary 1', 'Primary 2', 'Primary 3', 'Primary 4', 'Primary 5', 'Primary 6']
+export const SECONDARY_CLASSES = ['JSS 1', 'JSS 2', 'JSS 3', 'SS 1', 'SS 2', 'SS 3']
+
+// Durable Foundation School (code DFS-PRIMARY) only ever deals with Primary
+// 1-6. Durable Comprehensive High School (code DCHS-SECONDARY) only ever
+// deals with JSS 1-3 and SS 1-3. This keeps each branch's dropdowns scoped
+// to classes that actually exist at that branch.
+export function classLevelsForSchoolCode(schoolCode: string | null | undefined) {
+  return schoolCode === 'DFS-PRIMARY' ? PRIMARY_CLASSES : SECONDARY_CLASSES
+}
+
 export const SS_STREAMS = ['Science', 'Arts', 'Commercial']
 
 export const TERM_NAMES = ['First Term', 'Second Term', 'Third Term']
