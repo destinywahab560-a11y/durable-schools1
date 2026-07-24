@@ -17,6 +17,15 @@ export default function AdminStudents() {
     admission_number: '', class_id: '', parent_email: ''
   })
 
+  const { data: school } = useQuery({
+    queryKey: ['school', schoolId],
+    queryFn: async () => {
+      const { data } = await supabase.from('schools').select('code').eq('id', schoolId).maybeSingle()
+      return data
+    },
+    enabled: !!schoolId
+  })
+
   const { data: classes } = useQuery({
     queryKey: ['classes', schoolId],
     queryFn: async () => {
@@ -96,6 +105,21 @@ export default function AdminStudents() {
     }
   }
 
+  const handleClassSelect = async (classId: string) => {
+    setForm((prev) => ({ ...prev, class_id: classId }))
+    if (!classId || !school?.code || !classes) return
+
+    const prefix = school.code.split('-')[0] // 'DFS' or 'DCHS'
+    const { count } = await supabase
+      .from('student_enrollments')
+      .select('id', { count: 'exact', head: true })
+      .in('class_id', classes.map((c) => c.id))
+
+    const nextNumber = (count ?? 0) + 1
+    const admissionNumber = `${prefix}-${String(nextNumber).padStart(4, '0')}`
+    setForm((prev) => ({ ...prev, class_id: classId, admission_number: admissionNumber }))
+  }
+
   if (isLoading) return <Spinner />
 
   return (
@@ -162,11 +186,11 @@ export default function AdminStudents() {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="label">Admission Number</label>
-              <input value={form.admission_number} onChange={(e) => setForm({ ...form, admission_number: e.target.value })} className="input" placeholder="e.g. ADM001" />
+              <input value={form.admission_number} onChange={(e) => setForm({ ...form, admission_number: e.target.value })} className="input" placeholder="Auto-fills once a class is picked" />
             </div>
             <div>
               <label className="label">Class</label>
-              <select required value={form.class_id} onChange={(e) => setForm({ ...form, class_id: e.target.value })} className="input">
+              <select required value={form.class_id} onChange={(e) => handleClassSelect(e.target.value)} className="input">
                 <option value="">Select class...</option>
                 {classes?.map((c) => (
                   <option key={c.id} value={c.id}>{c.name} {c.arm}{c.stream ? ` (${c.stream})` : ''}</option>
