@@ -38,11 +38,11 @@ export default function AdminStudents() {
   const { data: students, isLoading } = useQuery({
     queryKey: ['students', schoolId],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('profiles')
         .select(`
           id, first_name, last_name, email, phone, is_active,
-          enrollments:student_enrollments(
+          enrollments:student_enrollments!student_id(
             admission_number,
             class:classes(name, arm, stream)
           )
@@ -50,6 +50,10 @@ export default function AdminStudents() {
         .eq('school_id', schoolId)
         .eq('role', 'student')
         .order('created_at', { ascending: false })
+      if (error) {
+        console.error('Fetch students error:', error)
+        throw error
+      }
       return data ?? []
     },
     enabled: !!schoolId
