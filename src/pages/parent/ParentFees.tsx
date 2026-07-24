@@ -19,7 +19,7 @@ export default function ParentFees() {
     queryFn: async () => {
       const { data } = await supabase
         .from('student_enrollments')
-        .select('student_id, student:profiles(first_name, last_name)')
+        .select('student_id, student:profiles!student_id(first_name, last_name)')
         .eq('parent_id', parentId)
       return data ?? []
     },
