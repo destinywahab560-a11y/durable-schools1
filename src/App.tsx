@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuthStore } from '@/stores/auth'
 import LandingPage from '@/pages/LandingPage'
 import AuthPage from '@/pages/AuthPage'
+import PaymentStatusPage from '@/pages/PaymentStatusPage'
 import AppLayout from '@/components/layout/AppLayout'
 import AdminDashboard from '@/pages/admin/AdminDashboard'
 import AdminClasses from '@/pages/admin/AdminClasses'
@@ -59,6 +60,7 @@ function App() {
     <Routes>
       <Route path="/" element={<LandingPage />} />
       <Route path="/auth" element={<AuthPage />} />
+      <Route path="/payment-status" element={<PaymentStatusPage />} />
 
       <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
         {/* Admin routes */}
