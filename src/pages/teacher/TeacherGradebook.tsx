@@ -33,7 +33,7 @@ export default function TeacherGradebook() {
     queryFn: async () => {
       const { data } = await supabase
         .from('student_enrollments')
-        .select('student_id, student:profiles(id, first_name, last_name)')
+        .select('student_id, student:profiles!student_id(id, first_name, last_name)')
         .eq('class_id', selectedClass)
       return data ?? []
     },
