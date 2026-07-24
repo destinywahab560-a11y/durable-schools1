@@ -95,23 +95,20 @@ export default function AdminFees() {
   }
 
   const [deleteFeeId, setDeleteFeeId] = useState<string | null>(null)
+  const [deleteFeePaidCount, setDeleteFeePaidCount] = useState(0)
 
-  const handleDeleteFee = async () => {
-    if (!deleteFeeId) return
-    // Deleting a fee cascades to delete its invoices too — so first check
-    // none of them have already been paid, to protect real payment records.
+  const openDeleteConfirm = async (feeId: string) => {
     const { count: paidCount } = await supabase
       .from('invoices')
       .select('id', { count: 'exact', head: true })
-      .eq('fee_id', deleteFeeId)
+      .eq('fee_id', feeId)
       .eq('status', 'paid')
+    setDeleteFeePaidCount(paidCount ?? 0)
+    setDeleteFeeId(feeId)
+  }
 
-    if (paidCount && paidCount > 0) {
-      toast.error(`Can't delete — ${paidCount} invoice(s) for this fee have already been paid.`)
-      setDeleteFeeId(null)
-      return
-    }
-
+  const handleDeleteFee = async () => {
+    if (!deleteFeeId) return
     const { error } = await supabase.from('fees').delete().eq('id', deleteFeeId)
     if (error) { toast.error(error.message); setDeleteFeeId(null); return }
     toast.success('Fee deleted')
@@ -148,7 +145,7 @@ export default function AdminFees() {
                     <button className="btn btn-outline text-sm flex-1" onClick={() => generateInvoices(f.id, f)}>
                       Generate Invoices
                     </button>
-                    <button className="btn btn-outline text-sm text-error-600 border-error-200 hover:bg-error-50" onClick={() => setDeleteFeeId(f.id)} aria-label="Delete fee">
+                    <button className="btn btn-outline text-sm text-error-600 border-error-200 hover:bg-error-50" onClick={() => openDeleteConfirm(f.id)} aria-label="Delete fee">
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
@@ -226,7 +223,11 @@ export default function AdminFees() {
         onClose={() => setDeleteFeeId(null)}
         onConfirm={handleDeleteFee}
         title="Delete Fee"
-        message="This will remove this fee and any unpaid invoices already generated from it. This cannot be undone."
+        message={
+          deleteFeePaidCount > 0
+            ? `This will remove this fee AND ${deleteFeePaidCount} already-paid invoice(s) tied to it — those payment records will be permanently lost. This cannot be undone.`
+            : 'This will remove this fee and any unpaid invoices already generated from it. This cannot be undone.'
+        }
         confirmLabel="Delete"
         danger
       />
