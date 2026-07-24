@@ -2,10 +2,10 @@ import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/stores/auth'
-import { PageHeader, Modal, Spinner, EmptyState } from '@/components/ui'
+import { PageHeader, Modal, Spinner, EmptyState, ConfirmDialog } from '@/components/ui'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import toast from 'react-hot-toast'
-import { DollarSign, Plus, CheckCircle, Clock, AlertCircle } from 'lucide-react'
+import { DollarSign, Plus, CheckCircle, Clock, AlertCircle, Trash2 } from 'lucide-react'
 
 export default function AdminFees() {
   const { profile } = useAuthStore()
@@ -94,6 +94,32 @@ export default function AdminFees() {
     queryClient.invalidateQueries({ queryKey: ['invoices-overview', schoolId] })
   }
 
+  const [deleteFeeId, setDeleteFeeId] = useState<string | null>(null)
+
+  const handleDeleteFee = async () => {
+    if (!deleteFeeId) return
+    // Deleting a fee cascades to delete its invoices too — so first check
+    // none of them have already been paid, to protect real payment records.
+    const { count: paidCount } = await supabase
+      .from('invoices')
+      .select('id', { count: 'exact', head: true })
+      .eq('fee_id', deleteFeeId)
+      .eq('status', 'paid')
+
+    if (paidCount && paidCount > 0) {
+      toast.error(`Can't delete — ${paidCount} invoice(s) for this fee have already been paid.`)
+      setDeleteFeeId(null)
+      return
+    }
+
+    const { error } = await supabase.from('fees').delete().eq('id', deleteFeeId)
+    if (error) { toast.error(error.message); setDeleteFeeId(null); return }
+    toast.success('Fee deleted')
+    setDeleteFeeId(null)
+    queryClient.invalidateQueries({ queryKey: ['fees', schoolId] })
+    queryClient.invalidateQueries({ queryKey: ['invoices-overview', schoolId] })
+  }
+
   if (isLoading) return <Spinner />
 
   return (
@@ -118,9 +144,14 @@ export default function AdminFees() {
                     <p className="text-lg font-bold text-brown-700">{formatCurrency(f.amount)}</p>
                   </div>
                   {f.due_date && <p className="text-sm text-brown-400 mb-3">Due: {formatDate(f.due_date)}</p>}
-                  <button className="btn btn-outline text-sm w-full" onClick={() => generateInvoices(f.id, f)}>
-                    Generate Invoices
-                  </button>
+                  <div className="flex gap-2">
+                    <button className="btn btn-outline text-sm flex-1" onClick={() => generateInvoices(f.id, f)}>
+                      Generate Invoices
+                    </button>
+                    <button className="btn btn-outline text-sm text-error-600 border-error-200 hover:bg-error-50" onClick={() => setDeleteFeeId(f.id)} aria-label="Delete fee">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -189,6 +220,16 @@ export default function AdminFees() {
           <button type="submit" className="btn btn-primary w-full">Create Fee</button>
         </form>
       </Modal>
+
+      <ConfirmDialog
+        open={!!deleteFeeId}
+        onClose={() => setDeleteFeeId(null)}
+        onConfirm={handleDeleteFee}
+        title="Delete Fee"
+        message="This will remove this fee and any unpaid invoices already generated from it. This cannot be undone."
+        confirmLabel="Delete"
+        danger
+      />
     </div>
   )
 }
