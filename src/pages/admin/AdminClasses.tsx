@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/stores/auth'
 import { PageHeader, Modal, Spinner, EmptyState, ConfirmDialog } from '@/components/ui'
-import { NIGERIAN_CLASSES, SS_STREAMS } from '@/lib/utils'
+import { classLevelsForSchoolCode, SS_STREAMS } from '@/lib/utils'
 import toast from 'react-hot-toast'
 import { School, Plus, Trash2 } from 'lucide-react'
 
@@ -15,6 +15,17 @@ export default function AdminClasses() {
   const [modalOpen, setModalOpen] = useState(false)
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [form, setForm] = useState({ name: '', arm: 'A', stream: '' })
+
+  const { data: school } = useQuery({
+    queryKey: ['school', schoolId],
+    queryFn: async () => {
+      const { data } = await supabase.from('schools').select('name, code').eq('id', schoolId).maybeSingle()
+      return data
+    },
+    enabled: !!schoolId
+  })
+
+  const availableClasses = classLevelsForSchoolCode(school?.code)
 
   const { data: classes, isLoading } = useQuery({
     queryKey: ['classes', schoolId],
@@ -64,7 +75,7 @@ export default function AdminClasses() {
     <div>
       <PageHeader
         title="Classes & Arms"
-        subtitle="Configure your school's class structure"
+        subtitle={school?.name ? `Configure ${school.name}'s class structure` : "Configure your school's class structure"}
         action={<button className="btn btn-primary" onClick={() => setModalOpen(true)}><Plus className="w-4 h-4" /> Add Class</button>}
       />
 
@@ -92,7 +103,7 @@ export default function AdminClasses() {
             <label className="label">Class Name</label>
             <select required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="input">
               <option value="">Select class...</option>
-              {NIGERIAN_CLASSES.map((c) => <option key={c} value={c}>{c}</option>)}
+              {availableClasses.map((c) => <option key={c} value={c}>{c}</option>)}
             </select>
           </div>
           <div>
