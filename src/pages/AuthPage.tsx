@@ -162,11 +162,10 @@ export default function AuthPage() {
                 <>
                   <div>
                     <label className="label">I am a...</label>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-3 gap-3">
                       {[
                         { value: 'admin', label: 'School Admin', desc: 'Manage a branch' },
                         { value: 'teacher', label: 'Teacher', desc: 'Join a school' },
-                        { value: 'student', label: 'Student', desc: 'Join a school' },
                         { value: 'parent', label: 'Parent', desc: 'Monitor children' }
                       ].map((r) => (
                         <button
