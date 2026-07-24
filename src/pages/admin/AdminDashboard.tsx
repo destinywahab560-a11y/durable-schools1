@@ -34,7 +34,7 @@ export default function AdminDashboard() {
     queryFn: async () => {
       const { data } = await supabase
         .from('student_enrollments')
-        .select('id, admission_number, created_at, student:profiles(first_name, last_name), class:classes(name, arm)')
+        .select('id, admission_number, created_at, student:profiles!student_id(first_name, last_name), class:classes(name, arm)')
         .order('created_at', { ascending: false })
         .limit(5)
       return data ?? []
