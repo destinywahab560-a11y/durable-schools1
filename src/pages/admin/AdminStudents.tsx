@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/stores/auth'
 import { PageHeader, Modal, Spinner, EmptyState } from '@/components/ui'
-import { getInitials, NIGERIAN_CLASSES } from '@/lib/utils'
+import { getInitials } from '@/lib/utils'
 import toast from 'react-hot-toast'
 import { GraduationCap, Plus, Mail } from 'lucide-react'
 
