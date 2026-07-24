@@ -9,6 +9,12 @@ const corsHeaders = {
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const paystackSecretKey = Deno.env.get('PAYSTACK_SECRET_KEY')
+// Supabase Edge Functions cannot serve real HTML on the shared supabase.co
+// domain (GET requests returning text/html get silently rewritten to
+// text/plain by the platform). So instead of rendering a page here, this
+// function verifies the payment and redirects the browser to the actual
+// frontend, which renders the real success/failure page.
+const frontendUrl = Deno.env.get('FRONTEND_URL') ?? 'https://durable-schools.vercel.app'
 
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
@@ -22,17 +28,11 @@ Deno.serve(async (req: Request) => {
     const invoiceId = url.searchParams.get('invoice_id')
 
     if (!reference) {
-      return new Response(
-        JSON.stringify({ error: 'Missing reference parameter' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+      return Response.redirect(`${frontendUrl}/payment-status?status=failed&reason=missing_reference`, 302)
     }
 
     if (!paystackSecretKey) {
-      return new Response(
-        JSON.stringify({ error: 'Paystack secret key not configured' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+      return Response.redirect(`${frontendUrl}/payment-status?status=failed&reason=not_configured`, 302)
     }
 
     const response = await fetch(`https://api.paystack.co/transaction/verify/${reference}`, {
@@ -45,10 +45,7 @@ Deno.serve(async (req: Request) => {
     const data = await response.json()
 
     if (!response.ok || data.data.status !== 'success') {
-      return new Response(
-        JSON.stringify({ error: 'Payment verification failed', status: data.data?.status || 'unknown' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+      return Response.redirect(`${frontendUrl}/payment-status?status=failed&reason=verification_failed`, 302)
     }
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
@@ -68,17 +65,9 @@ Deno.serve(async (req: Request) => {
       }).eq('id', invoiceId)
     }
 
-    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Payment Successful</title>
-<style>body{font-family:Inter,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#FAF5EB;color:#5C3A1E}
-.box{text-align:center;padding:2rem}.check{width:64px;height:64px;border-radius:50%;background:#22C55E;color:white;display:flex;align-items:center;justify-content:center;font-size:32px;margin:0 auto 1rem}
-a{display:inline-block;margin-top:1rem;padding:.75rem 1.5rem;background:#5C3A1E;color:#FAF5EB;border-radius:8px;text-decoration:none}</style></head>
-<body><div class="box"><div class="check">✓</div><h1>Payment Successful!</h1><p>Your payment has been confirmed.</p><a href="/">Return to Dashboard</a></div></body></html>`
-
-    return new Response(html, { headers: { 'Content-Type': 'text/html' } })
+    return Response.redirect(`${frontendUrl}/payment-status?status=success`, 302)
   } catch (err) {
-    return new Response(
-      JSON.stringify({ error: err instanceof Error ? err.message : 'Unknown error' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    )
+    console.error('Payment verification error:', err)
+    return Response.redirect(`${frontendUrl}/payment-status?status=failed&reason=server_error`, 302)
   }
 })
