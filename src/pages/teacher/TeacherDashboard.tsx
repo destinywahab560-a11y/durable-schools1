@@ -31,6 +31,20 @@ export default function TeacherDashboard() {
     enabled: !!teacherId
   })
 
+  const { data: totalStudents } = useQuery({
+    queryKey: ['my-total-students', teacherId, assignments],
+    queryFn: async () => {
+      const classIds = [...new Set((assignments ?? []).map((a) => a.class?.id).filter(Boolean))]
+      if (classIds.length === 0) return 0
+      const { count } = await supabase
+        .from('student_enrollments')
+        .select('id', { count: 'exact', head: true })
+        .in('class_id', classIds)
+      return count ?? 0
+    },
+    enabled: !!assignments
+  })
+
   const { data: classrooms, isLoading } = useQuery({
     queryKey: ['my-classrooms', teacherId],
     queryFn: async () => {
@@ -90,7 +104,7 @@ export default function TeacherDashboard() {
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
         <StatCard label="My Classrooms" value={classrooms?.length ?? 0} icon={BookOpen} color="brown" />
         <StatCard label="Approved Subjects" value={assignments?.length ?? 0} icon={ClipboardList} color="amber" />
-        <StatCard label="Total Students" value="—" icon={Users} color="sage" />
+        <StatCard label="Total Students" value={totalStudents ?? 0} icon={Users} color="sage" />
       </div>
 
       <h3 className="text-lg font-semibold text-brown-800 mb-4">My Classrooms</h3>
