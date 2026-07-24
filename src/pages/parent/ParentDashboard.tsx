@@ -19,7 +19,7 @@ export default function ParentDashboard() {
         .select(`
           student_id,
           student:profiles!student_id(id, first_name, last_name, email),
-          class:classes(name, arm, stream),
+          class:classes(id, name, arm, stream),
           admission_number
         `)
         .eq('parent_id', parentId)
@@ -33,6 +33,21 @@ export default function ParentDashboard() {
   })
 
   const activeChildId = selectedChild || children?.[0]?.student_id
+  const activeChild = children?.find((c) => c.student_id === activeChildId) ?? children?.[0]
+  const activeChildClassId = activeChild?.class?.id
+
+  const { data: childClassrooms } = useQuery({
+    queryKey: ['child-classrooms', activeChildClassId],
+    queryFn: async () => {
+      if (!activeChildClassId) return []
+      const { data } = await supabase
+        .from('classrooms')
+        .select('id')
+        .eq('class_id', activeChildClassId)
+      return data ?? []
+    },
+    enabled: !!activeChildClassId
+  })
 
   const { data: results } = useQuery({
     queryKey: ['child-results', activeChildId],
@@ -111,7 +126,7 @@ export default function ParentDashboard() {
       {children && children.length > 0 ? (
         <>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            <StatCard label="Subjects" value={results?.length ?? 0} icon={BarChart3} color="brown" />
+            <StatCard label="Subjects" value={childClassrooms?.length ?? 0} icon={BarChart3} color="brown" />
             <StatCard label="Present" value={presentCount} icon={ClipboardCheck} color="sage" />
             <StatCard label="Absent" value={absentCount} icon={ClipboardCheck} color="error" />
             <StatCard label="Pending Fees" value={pendingInvoices} icon={DollarSign} color="amber" />
