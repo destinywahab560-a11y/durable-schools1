@@ -2,10 +2,10 @@ import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/stores/auth'
-import { PageHeader, Spinner, EmptyState } from '@/components/ui'
+import { PageHeader, Spinner, EmptyState, ConfirmDialog } from '@/components/ui'
 import { cn } from '@/lib/utils'
 import toast from 'react-hot-toast'
-import { ClipboardCheck, Check, X, Clock } from 'lucide-react'
+import { ClipboardCheck, Check, X, Clock, Trash2 } from 'lucide-react'
 
 export default function AdminAssignments() {
   const { profile } = useAuthStore()
@@ -51,6 +51,26 @@ export default function AdminAssignments() {
     }
   }
 
+  const [deleteId, setDeleteId] = useState<string | null>(null)
+  const handleDelete = async () => {
+    if (!deleteId) return
+    const assignment = assignments?.find((a: any) => a.id === deleteId)
+    if (assignment?.status === 'approved') {
+      // Also remove the classroom this assignment created, so access is
+      // actually revoked, not just hidden from this list.
+      await supabase.from('classrooms')
+        .delete()
+        .eq('class_id', assignment.class_id)
+        .eq('subject_id', assignment.subject_id)
+        .eq('teacher_id', assignment.teacher_id)
+    }
+    const { error } = await supabase.from('teacher_assignments').delete().eq('id', deleteId)
+    if (error) { toast.error(error.message); return }
+    toast.success('Assignment deleted')
+    setDeleteId(null)
+    queryClient.invalidateQueries({ queryKey: ['assignments', schoolId] })
+  }
+
   if (isLoading) return <Spinner />
 
   return (
@@ -89,12 +109,20 @@ export default function AdminAssignments() {
                   <button className="btn btn-ghost text-sm text-error-600" onClick={() => updateStatus(a.id, 'rejected')}>
                     <X className="w-4 h-4" /> Reject
                   </button>
+                  <button onClick={() => setDeleteId(a.id)} className="p-2 rounded-lg hover:bg-error-50 text-error-500" aria-label="Delete assignment">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
                 </div>
               )}
               {a.status !== 'pending' && (
-                <span className={cn('badge', a.status === 'approved' ? 'badge-sage' : 'badge-error')}>
-                  {a.status}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className={cn('badge', a.status === 'approved' ? 'badge-sage' : 'badge-error')}>
+                    {a.status}
+                  </span>
+                  <button onClick={() => setDeleteId(a.id)} className="p-2 rounded-lg hover:bg-error-50 text-error-500" aria-label="Delete assignment">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
               )}
             </div>
           ))}
@@ -102,6 +130,16 @@ export default function AdminAssignments() {
       ) : (
         <EmptyState icon={ClipboardCheck} title="No assignments yet" description="Teachers can request subject-class assignments from their dashboard." />
       )}
+
+      <ConfirmDialog
+        open={!!deleteId}
+        onClose={() => setDeleteId(null)}
+        onConfirm={handleDelete}
+        title="Delete Assignment"
+        message="If this assignment was approved, this also revokes the teacher's access to that classroom (materials, gradebook, attendance). This cannot be undone."
+        confirmLabel="Delete"
+        danger
+      />
     </div>
   )
 }
