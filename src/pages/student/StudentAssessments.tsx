@@ -55,7 +55,7 @@ export default function StudentAssessments() {
     enabled: !!classrooms && classrooms.length > 0
   })
 
-  const { data: questions } = useQuery({
+  const { data: questions, isLoading: questionsLoading } = useQuery({
     queryKey: ['assessment-questions', takeModal],
     queryFn: async () => {
       if (!takeModal) return []
@@ -130,6 +130,10 @@ export default function StudentAssessments() {
     queryClient.invalidateQueries({ queryKey: ['my-submissions', studentId] })
   }
 
+  const activeAssessment = assessments?.find((a: any) => a.id === takeModal)
+  const assessmentNotYetOpen = !!activeAssessment?.open_at && new Date(activeAssessment.open_at) > new Date()
+  const noQuestionsYet = !questionsLoading && (!questions || questions.length === 0)
+
   if (isLoading) return <Spinner />
 
   return (
@@ -160,6 +164,8 @@ export default function StudentAssessments() {
                     <p className="text-lg font-bold text-brown-800">{submission.score?.toFixed(1)}</p>
                     <p className="text-xs text-sage-500">Submitted</p>
                   </div>
+                ) : a.open_at && new Date(a.open_at) > new Date() ? (
+                  <span className="badge">Not open yet</span>
                 ) : (
                   <button className="btn btn-primary text-sm" onClick={() => { setTakeModal(a.id); setAnswers({}) }}>
                     <PlayCircle className="w-4 h-4" /> Take
@@ -175,7 +181,23 @@ export default function StudentAssessments() {
 
       <Modal open={!!takeModal} onClose={() => setTakeModal(null)} title="Take Assessment" size="xl">
         <form onSubmit={handleSubmit} className="space-y-6">
-          {questions && questions.length > 0 ? (
+          {questionsLoading ? (
+            <Spinner />
+          ) : assessmentNotYetOpen ? (
+            <div className="text-center py-8">
+              <Clock className="w-10 h-10 text-brown-300 mx-auto mb-3" />
+              <p className="font-semibold text-brown-800 mb-1">Not open yet</p>
+              <p className="text-sm text-brown-500">
+                This assessment opens on {activeAssessment?.open_at ? formatDate(activeAssessment.open_at) : 'a later date'}. Please check back then.
+              </p>
+            </div>
+          ) : noQuestionsYet ? (
+            <div className="text-center py-8">
+              <AlertCircle className="w-10 h-10 text-brown-300 mx-auto mb-3" />
+              <p className="font-semibold text-brown-800 mb-1">Questions not ready yet</p>
+              <p className="text-sm text-brown-500">Your teacher hasn't added questions to this assessment yet. Please check back later.</p>
+            </div>
+          ) : (
             questions.map((aq: any, i: number) => {
               const q = aq.question as any
               if (!q) return null
@@ -238,10 +260,10 @@ export default function StudentAssessments() {
                 </div>
               )
             })
-          ) : (
-            <Spinner />
           )}
-          <button type="submit" className="btn btn-primary w-full">Submit Assessment</button>
+          {!questionsLoading && !assessmentNotYetOpen && !noQuestionsYet && (
+            <button type="submit" className="btn btn-primary w-full">Submit Assessment</button>
+          )}
         </form>
       </Modal>
     </div>
