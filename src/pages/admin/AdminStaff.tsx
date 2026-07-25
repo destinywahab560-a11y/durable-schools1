@@ -12,7 +12,25 @@ export default function AdminStaff() {
   const schoolId = profile?.school_id
   const queryClient = useQueryClient()
   const [modalOpen, setModalOpen] = useState(false)
-  const [form, setForm] = useState({ first_name: '', last_name: '', email: '', phone: '', password: '' })
+  const [form, setForm] = useState({ first_name: '', last_name: '', email: '', phone: '', password: '', class_id: '', subject_id: '' })
+
+  const { data: classes } = useQuery({
+    queryKey: ['classes', schoolId],
+    queryFn: async () => {
+      const { data } = await supabase.from('classes').select('*').eq('school_id', schoolId).order('name')
+      return data ?? []
+    },
+    enabled: !!schoolId
+  })
+
+  const { data: subjects } = useQuery({
+    queryKey: ['subjects', schoolId],
+    queryFn: async () => {
+      const { data } = await supabase.from('subjects').select('*').eq('school_id', schoolId).order('name')
+      return data ?? []
+    },
+    enabled: !!schoolId
+  })
 
   const { data: staff, isLoading } = useQuery({
     queryKey: ['staff', schoolId],
@@ -50,9 +68,30 @@ export default function AdminStaff() {
       })
       if (profileError) throw profileError
 
-      toast.success('Teacher account created')
+      if (form.class_id && form.subject_id) {
+        const { error: assignError } = await supabase.from('teacher_assignments').insert({
+          teacher_id: authData.user.id,
+          class_id: form.class_id,
+          subject_id: form.subject_id,
+          status: 'approved'
+        })
+        if (assignError) throw assignError
+
+        const cls = classes?.find((c) => c.id === form.class_id)
+        const subj = subjects?.find((s) => s.id === form.subject_id)
+        const { error: classroomError } = await supabase.from('classrooms').insert({
+          school_id: schoolId,
+          class_id: form.class_id,
+          subject_id: form.subject_id,
+          teacher_id: authData.user.id,
+          name: `${subj?.name} — ${cls?.name}${cls?.arm}`
+        })
+        if (classroomError && !classroomError.message.includes('duplicate')) throw classroomError
+      }
+
+      toast.success(form.class_id ? 'Teacher account created and assigned' : 'Teacher account created')
       setModalOpen(false)
-      setForm({ first_name: '', last_name: '', email: '', phone: '', password: '' })
+      setForm({ first_name: '', last_name: '', email: '', phone: '', password: '', class_id: '', subject_id: '' })
       queryClient.invalidateQueries({ queryKey: ['staff', schoolId] })
     } catch (err) {
       console.error('Add teacher error:', err)
@@ -131,6 +170,29 @@ export default function AdminStaff() {
             <label className="label">Temporary Password</label>
             <input type="password" required minLength={6} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} className="input" />
           </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="label">Class (optional)</label>
+              <select value={form.class_id} onChange={(e) => setForm({ ...form, class_id: e.target.value })} className="input">
+                <option value="">No class yet</option>
+                {classes?.map((c) => (
+                  <option key={c.id} value={c.id}>{c.name} {c.arm}{c.stream ? ` (${c.stream})` : ''}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="label">Subject (optional)</label>
+              <select value={form.subject_id} onChange={(e) => setForm({ ...form, subject_id: e.target.value })} className="input">
+                <option value="">No subject yet</option>
+                {subjects?.map((s) => (
+                  <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <p className="text-xs text-brown-400 -mt-2">
+            Assigning a class + subject now creates it as already-approved. They can request additional classes later from their own dashboard.
+          </p>
           <button type="submit" className="btn btn-primary w-full">Create Teacher Account</button>
         </form>
       </Modal>
