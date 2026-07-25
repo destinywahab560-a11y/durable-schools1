@@ -12,6 +12,7 @@ import AdminSessions from '@/pages/admin/AdminSessions'
 import AdminStaff from '@/pages/admin/AdminStaff'
 import AdminAssignments from '@/pages/admin/AdminAssignments'
 import AdminStudents from '@/pages/admin/AdminStudents'
+import AdminParents from '@/pages/admin/AdminParents'
 import AdminFees from '@/pages/admin/AdminFees'
 import AdminAnnouncements from '@/pages/admin/AdminAnnouncements'
 import AdminAuditLog from '@/pages/admin/AdminAuditLog'
@@ -71,6 +72,7 @@ function App() {
         <Route path="/admin/staff" element={<AdminStaff />} />
         <Route path="/admin/assignments" element={<AdminAssignments />} />
         <Route path="/admin/students" element={<AdminStudents />} />
+        <Route path="/admin/parents" element={<AdminParents />} />
         <Route path="/admin/fees" element={<AdminFees />} />
         <Route path="/admin/announcements" element={<AdminAnnouncements />} />
         <Route path="/admin/audit" element={<AdminAuditLog />} />
