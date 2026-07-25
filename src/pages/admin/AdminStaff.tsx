@@ -33,6 +33,24 @@ export default function AdminStaff() {
     enabled: !!schoolId
   })
 
+  const { data: classSubjectLinks } = useQuery({
+    queryKey: ['class-subjects-links', schoolId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('class_subjects')
+        .select('class_id, subject_id')
+        .in('class_id', (classes ?? []).map((c) => c.id))
+      return data ?? []
+    },
+    enabled: !!classes && classes.length > 0
+  })
+
+  const subjectsForClass = (classId: string) => {
+    if (!classId) return subjects ?? []
+    const validSubjectIds = new Set((classSubjectLinks ?? []).filter((l) => l.class_id === classId).map((l) => l.subject_id))
+    return (subjects ?? []).filter((s) => validSubjectIds.has(s.id))
+  }
+
   const { data: staff, isLoading } = useQuery({
     queryKey: ['staff', schoolId],
     queryFn: async () => {
@@ -134,7 +152,9 @@ export default function AdminStaff() {
           .filter((r) => r.first_name || r.last_name || r.email)
           .map((r) => {
             const matchedClass = r.class ? findClassByName(r.class) : undefined
-            const matchedSubject = r.subject ? findSubjectByName(r.subject) : undefined
+            const rawMatchedSubject = r.subject ? findSubjectByName(r.subject) : undefined
+            const validSubjectIds = new Set(matchedClass ? subjectsForClass(matchedClass.id).map((s) => s.id) : [])
+            const matchedSubject = rawMatchedSubject && validSubjectIds.has(rawMatchedSubject.id) ? rawMatchedSubject : undefined
             return {
               first_name: r.first_name || '',
               last_name: r.last_name || '',
@@ -309,7 +329,7 @@ export default function AdminStaff() {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="label">Class (optional)</label>
-              <select value={form.class_id} onChange={(e) => setForm({ ...form, class_id: e.target.value })} className="input">
+              <select value={form.class_id} onChange={(e) => setForm({ ...form, class_id: e.target.value, subject_id: '' })} className="input">
                 <option value="">No class yet</option>
                 {classes?.map((c) => (
                   <option key={c.id} value={c.id}>{c.name} {c.arm}{c.stream ? ` (${c.stream})` : ''}</option>
@@ -318,9 +338,9 @@ export default function AdminStaff() {
             </div>
             <div>
               <label className="label">Subject (optional)</label>
-              <select value={form.subject_id} onChange={(e) => setForm({ ...form, subject_id: e.target.value })} className="input">
-                <option value="">No subject yet</option>
-                {subjects?.map((s) => (
+              <select value={form.subject_id} onChange={(e) => setForm({ ...form, subject_id: e.target.value })} className="input" disabled={!form.class_id}>
+                <option value="">{form.class_id ? 'No subject yet' : 'Pick a class first'}</option>
+                {subjectsForClass(form.class_id).map((s) => (
                   <option key={s.id} value={s.id}>{s.name}</option>
                 ))}
               </select>
@@ -386,9 +406,9 @@ export default function AdminStaff() {
                     <option value="">No class</option>
                     {classes?.map((c) => <option key={c.id} value={c.id}>{c.name} {c.arm}</option>)}
                   </select>
-                  <select value={row.subject_id} onChange={(e) => updateBulkRow(i, 'subject_id', e.target.value)} className="input col-span-2 text-sm">
-                    <option value="">No subject</option>
-                    {subjects?.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                  <select value={row.subject_id} onChange={(e) => updateBulkRow(i, 'subject_id', e.target.value)} className="input col-span-2 text-sm" disabled={!row.class_id}>
+                    <option value="">{row.class_id ? 'No subject' : 'Pick class first'}</option>
+                    {subjectsForClass(row.class_id).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
                   </select>
                   <button type="button" onClick={() => removeBulkRow(i)} className="col-span-1 p-2 rounded-lg hover:bg-error-50 text-error-500" aria-label="Remove row">
                     <Trash2 className="w-4 h-4" />
