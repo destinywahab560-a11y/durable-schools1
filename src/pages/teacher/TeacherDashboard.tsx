@@ -80,6 +80,24 @@ export default function TeacherDashboard() {
     enabled: !!profile?.school_id
   })
 
+  const { data: classSubjectLinks } = useQuery({
+    queryKey: ['class-subjects-links', profile?.school_id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('class_subjects')
+        .select('class_id, subject_id')
+        .in('class_id', (schoolClasses ?? []).map((c) => c.id))
+      return data ?? []
+    },
+    enabled: !!schoolClasses && schoolClasses.length > 0
+  })
+
+  const subjectsForClass = (classId: string) => {
+    if (!classId) return subjects ?? []
+    const validSubjectIds = new Set((classSubjectLinks ?? []).filter((l) => l.class_id === classId).map((l) => l.subject_id))
+    return (subjects ?? []).filter((s) => validSubjectIds.has(s.id))
+  }
+
   const handleRequest = async (e: React.FormEvent) => {
     e.preventDefault()
     const { error } = await supabase.from('teacher_assignments').insert({
@@ -132,16 +150,16 @@ export default function TeacherDashboard() {
         <form onSubmit={handleRequest} className="space-y-4">
           <div>
             <label className="label">Class</label>
-            <select required value={form.class_id} onChange={(e) => setForm({ ...form, class_id: e.target.value })} className="input">
+            <select required value={form.class_id} onChange={(e) => setForm({ class_id: e.target.value, subject_id: '' })} className="input">
               <option value="">Select class...</option>
               {schoolClasses?.map((c) => <option key={c.id} value={c.id}>{c.name} {c.arm}{c.stream ? ` (${c.stream})` : ''}</option>)}
             </select>
           </div>
           <div>
             <label className="label">Subject</label>
-            <select required value={form.subject_id} onChange={(e) => setForm({ ...form, subject_id: e.target.value })} className="input">
-              <option value="">Select subject...</option>
-              {subjects?.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+            <select required value={form.subject_id} onChange={(e) => setForm({ ...form, subject_id: e.target.value })} className="input" disabled={!form.class_id}>
+              <option value="">{form.class_id ? 'Select subject...' : 'Pick a class first'}</option>
+              {subjectsForClass(form.class_id).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
           </div>
           <button type="submit" className="btn btn-primary w-full">Submit Request</button>
