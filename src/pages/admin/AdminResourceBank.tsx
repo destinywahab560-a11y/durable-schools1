@@ -2,9 +2,9 @@ import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/stores/auth'
-import { PageHeader, Modal, Spinner, EmptyState } from '@/components/ui'
+import { PageHeader, Modal, Spinner, EmptyState, ConfirmDialog } from '@/components/ui'
 import toast from 'react-hot-toast'
-import { Library, Plus, Search, Upload, FileText } from 'lucide-react'
+import { Library, Plus, Search, Upload, FileText, Trash2 } from 'lucide-react'
 
 export default function AdminResourceBank() {
   const { profile } = useAuthStore()
@@ -70,6 +70,23 @@ export default function AdminResourceBank() {
     queryClient.invalidateQueries({ queryKey: ['resource-bank', schoolId] })
   }
 
+  const [deleteId, setDeleteId] = useState<string | null>(null)
+  const handleDelete = async () => {
+    if (!deleteId) return
+    const resource = resources?.find((r: any) => r.id === deleteId)
+    // Clean up the uploaded file in Storage too, if this resource has one
+    // (public bucket URLs look like .../object/public/resources/<path>)
+    if (resource?.file_url?.includes('/resources/')) {
+      const path = resource.file_url.split('/resources/')[1]
+      if (path) await supabase.storage.from('resources').remove([path])
+    }
+    const { error } = await supabase.from('resource_bank').delete().eq('id', deleteId)
+    if (error) { toast.error(error.message); return }
+    toast.success('Resource deleted')
+    setDeleteId(null)
+    queryClient.invalidateQueries({ queryKey: ['resource-bank', schoolId] })
+  }
+
   const filtered = resources?.filter((r: any) =>
     r.title.toLowerCase().includes(search.toLowerCase()) ||
     r.topic?.toLowerCase().includes(search.toLowerCase()) ||
@@ -96,10 +113,13 @@ export default function AdminResourceBank() {
                 <div className="w-10 h-10 rounded-lg bg-sage-100 text-sage-500 flex items-center justify-center shrink-0">
                   <Library className="w-5 h-5" />
                 </div>
-                <div>
+                <div className="flex-1">
                   <p className="font-semibold text-brown-800">{r.title}</p>
                   {r.subject && <p className="text-sm text-brown-400">{r.subject.name}</p>}
                 </div>
+                <button onClick={() => setDeleteId(r.id)} className="p-2 rounded-lg hover:bg-error-50 text-error-500" aria-label="Delete resource">
+                  <Trash2 className="w-4 h-4" />
+                </button>
               </div>
               {r.topic && <span className="badge badge-brown mb-2">{r.topic}</span>}
               {r.description && <p className="text-sm text-brown-500 mt-2">{r.description}</p>}
@@ -165,6 +185,16 @@ export default function AdminResourceBank() {
           <button type="submit" className="btn btn-primary w-full" disabled={uploading}>{uploading ? 'Uploading...' : 'Add Resource'}</button>
         </form>
       </Modal>
+
+      <ConfirmDialog
+        open={!!deleteId}
+        onClose={() => setDeleteId(null)}
+        onConfirm={handleDelete}
+        title="Delete Resource"
+        message="This will remove the resource (and its uploaded file, if any) from the library. This cannot be undone."
+        confirmLabel="Delete"
+        danger
+      />
     </div>
   )
 }
