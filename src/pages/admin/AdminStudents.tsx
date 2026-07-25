@@ -90,11 +90,12 @@ export default function AdminStudents() {
 
       const { data: session } = await supabase
         .from('academic_sessions').select('id').eq('school_id', schoolId).eq('is_current', true).maybeSingle()
+      if (!session) throw new Error('No current academic session is set. Go to Sessions & Terms and mark one as current before enrolling students.')
 
       const { error: enrollError } = await supabase.from('student_enrollments').insert({
         student_id: authData.user.id,
         class_id: form.class_id,
-        session_id: session?.id ?? null,
+        session_id: session.id,
         admission_number: form.admission_number || null,
         parent_id: parentId
       })
