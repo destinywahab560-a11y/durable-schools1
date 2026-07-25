@@ -2,11 +2,11 @@ import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase, signUpWithoutSessionSwap } from '@/lib/supabase'
 import { useAuthStore } from '@/stores/auth'
-import { PageHeader, Modal, Spinner, EmptyState } from '@/components/ui'
+import { PageHeader, Modal, Spinner, EmptyState, ConfirmDialog } from '@/components/ui'
 import { getInitials } from '@/lib/utils'
 import toast from 'react-hot-toast'
 import Papa from 'papaparse'
-import { GraduationCap, Plus, Mail, Users, Trash2, Upload, Download } from 'lucide-react'
+import { GraduationCap, Plus, Mail, Users, Trash2, Upload, Download, RotateCcw } from 'lucide-react'
 
 export default function AdminStudents() {
   const { profile } = useAuthStore()
@@ -293,6 +293,16 @@ export default function AdminStudents() {
     }
   }
 
+  const [toggleActiveTarget, setToggleActiveTarget] = useState<{ id: string; name: string; isActive: boolean } | null>(null)
+  const handleToggleActive = async () => {
+    if (!toggleActiveTarget) return
+    const { error } = await supabase.from('profiles').update({ is_active: !toggleActiveTarget.isActive }).eq('id', toggleActiveTarget.id)
+    if (error) { toast.error(error.message); setToggleActiveTarget(null); return }
+    toast.success(toggleActiveTarget.isActive ? 'Student deactivated' : 'Student reactivated')
+    setToggleActiveTarget(null)
+    queryClient.invalidateQueries({ queryKey: ['students', schoolId] })
+  }
+
   if (isLoading) return <Spinner />
 
   return (
@@ -336,6 +346,13 @@ export default function AdminStudents() {
                 <span className={`badge ${s.is_active ? 'badge-sage' : 'badge-error'}`}>
                   {s.is_active ? 'Active' : 'Inactive'}
                 </span>
+                <button
+                  onClick={() => setToggleActiveTarget({ id: s.id, name: `${s.first_name} ${s.last_name}`, isActive: s.is_active })}
+                  className="p-2 rounded-lg hover:bg-error-50 text-error-500"
+                  aria-label={s.is_active ? 'Deactivate student' : 'Reactivate student'}
+                >
+                  {s.is_active ? <Trash2 className="w-4 h-4" /> : <RotateCcw className="w-4 h-4" />}
+                </button>
               </div>
             </div>
           ))}
@@ -490,6 +507,20 @@ export default function AdminStudents() {
           </div>
         )}
       </Modal>
+
+      <ConfirmDialog
+        open={!!toggleActiveTarget}
+        onClose={() => setToggleActiveTarget(null)}
+        onConfirm={handleToggleActive}
+        title={toggleActiveTarget?.isActive ? 'Deactivate Student' : 'Reactivate Student'}
+        message={
+          toggleActiveTarget?.isActive
+            ? `${toggleActiveTarget?.name} will lose access to their account. Their grades, attendance, and records are kept — this is reversible, not a permanent delete.`
+            : `${toggleActiveTarget?.name} will regain access to their account.`
+        }
+        confirmLabel={toggleActiveTarget?.isActive ? 'Deactivate' : 'Reactivate'}
+        danger={toggleActiveTarget?.isActive}
+      />
     </div>
   )
 }
