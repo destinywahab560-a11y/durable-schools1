@@ -5,7 +5,8 @@ import { useAuthStore } from '@/stores/auth'
 import { PageHeader, Modal, Spinner, EmptyState } from '@/components/ui'
 import { getInitials } from '@/lib/utils'
 import toast from 'react-hot-toast'
-import { GraduationCap, Plus, Mail } from 'lucide-react'
+import Papa from 'papaparse'
+import { GraduationCap, Plus, Mail, Users, Trash2, Upload, Download } from 'lucide-react'
 
 export default function AdminStudents() {
   const { profile } = useAuthStore()
@@ -126,6 +127,139 @@ export default function AdminStudents() {
     setForm((prev) => ({ ...prev, class_id: classId, admission_number: admissionNumber }))
   }
 
+  const generateNextAdmissionNumber = async (offset = 0) => {
+    if (!school?.code || !classes) return null
+    const prefix = school.code.split('-')[0]
+    const { count } = await supabase
+      .from('student_enrollments')
+      .select('id', { count: 'exact', head: true })
+      .in('class_id', classes.map((c) => c.id))
+    const nextNumber = (count ?? 0) + 1 + offset
+    return `${prefix}-${String(nextNumber).padStart(4, '0')}`
+  }
+
+  const generateTempPassword = () => Math.random().toString(36).slice(-4) + Math.random().toString(36).slice(-4).toUpperCase()
+
+  type BulkRow = { first_name: string; last_name: string; email: string; phone: string; parent_email: string }
+  type BulkResult = { first_name: string; last_name: string; email: string; admission_number: string; password: string; success: boolean; error?: string }
+
+  const [bulkModalOpen, setBulkModalOpen] = useState(false)
+  const [bulkClassId, setBulkClassId] = useState('')
+  const [bulkRows, setBulkRows] = useState<BulkRow[]>([{ first_name: '', last_name: '', email: '', phone: '', parent_email: '' }])
+  const [bulkResults, setBulkResults] = useState<BulkResult[] | null>(null)
+  const [bulkSubmitting, setBulkSubmitting] = useState(false)
+
+  const addBulkRow = () => setBulkRows((prev) => [...prev, { first_name: '', last_name: '', email: '', phone: '', parent_email: '' }])
+  const removeBulkRow = (index: number) => setBulkRows((prev) => prev.filter((_, i) => i !== index))
+  const updateBulkRow = (index: number, field: keyof BulkRow, value: string) => {
+    setBulkRows((prev) => prev.map((row, i) => (i === index ? { ...row, [field]: value } : row)))
+  }
+
+  const handleCsvUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      transformHeader: (h) => h.trim().toLowerCase().replace(/\s+/g, '_'),
+      complete: (results) => {
+        const parsed = (results.data as any[])
+          .filter((r) => r.first_name || r.last_name || r.email)
+          .map((r) => ({
+            first_name: r.first_name || '',
+            last_name: r.last_name || '',
+            email: r.email || '',
+            phone: r.phone || '',
+            parent_email: r.parent_email || ''
+          }))
+        if (parsed.length === 0) {
+          toast.error('No valid rows found — check the CSV has first_name, last_name, email columns.')
+          return
+        }
+        setBulkRows((prev) => {
+          const cleaned = prev.filter((r) => r.first_name || r.last_name || r.email)
+          return [...cleaned, ...parsed]
+        })
+        toast.success(`${parsed.length} row(s) added from CSV`)
+      },
+      error: (err) => toast.error(`Couldn't read that file: ${err.message}`)
+    })
+    e.target.value = ''
+  }
+
+  const downloadCsvTemplate = () => {
+    const csv = 'first_name,last_name,email,phone,parent_email\nJohn,Doe,john.doe@example.com,08012345678,parent@example.com\n'
+    const blob = new Blob([csv], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'student_bulk_enroll_template.csv'
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const handleBulkEnroll = async () => {
+    const validRows = bulkRows.filter((r) => r.first_name && r.last_name && r.email)
+    if (!bulkClassId) { toast.error('Pick a class for this batch first.'); return }
+    if (validRows.length === 0) { toast.error('Add at least one student with a first name, last name, and email.'); return }
+
+    const { data: session } = await supabase
+      .from('academic_sessions').select('id').eq('school_id', schoolId).eq('is_current', true).maybeSingle()
+    if (!session) { toast.error('No current academic session is set. Go to Sessions & Terms and mark one as current first.'); return }
+
+    setBulkSubmitting(true)
+    const results: BulkResult[] = []
+
+    for (let i = 0; i < validRows.length; i++) {
+      const row = validRows[i]
+      const password = generateTempPassword()
+      const admissionNumber = (await generateNextAdmissionNumber(i)) ?? ''
+      try {
+        const { data: authData, error: authError } = await signUpWithoutSessionSwap(
+          row.email, password, { role: 'student', first_name: row.first_name, last_name: row.last_name }
+        )
+        if (authError) throw authError
+        if (!authData.user) throw new Error('Account creation failed')
+
+        const { error: profileError } = await supabase.from('profiles').insert({
+          id: authData.user.id, school_id: schoolId, role: 'student',
+          first_name: row.first_name, last_name: row.last_name, email: row.email, phone: row.phone || null
+        })
+        if (profileError) throw profileError
+
+        let parentId: string | null = null
+        if (row.parent_email) {
+          const { data: parent } = await supabase.from('profiles').select('id').eq('email', row.parent_email).maybeSingle()
+          if (parent) parentId = parent.id
+        }
+
+        const { error: enrollError } = await supabase.from('student_enrollments').insert({
+          student_id: authData.user.id, class_id: bulkClassId, session_id: session.id,
+          admission_number: admissionNumber || null, parent_id: parentId
+        })
+        if (enrollError) throw enrollError
+
+        results.push({ first_name: row.first_name, last_name: row.last_name, email: row.email, admission_number: admissionNumber, password, success: true })
+      } catch (err) {
+        results.push({
+          first_name: row.first_name, last_name: row.last_name, email: row.email, admission_number: admissionNumber, password,
+          success: false, error: err instanceof Error ? err.message : 'Failed'
+        })
+      }
+    }
+
+    setBulkResults(results)
+    setBulkSubmitting(false)
+    queryClient.invalidateQueries({ queryKey: ['students', schoolId] })
+  }
+
+  const closeBulkModal = () => {
+    setBulkModalOpen(false)
+    setBulkClassId('')
+    setBulkRows([{ first_name: '', last_name: '', email: '', phone: '', parent_email: '' }])
+    setBulkResults(null)
+  }
+
   const [linkParentTarget, setLinkParentTarget] = useState<{ enrollmentId: string; studentName: string } | null>(null)
   const [parentEmail, setParentEmail] = useState('')
 
@@ -164,7 +298,12 @@ export default function AdminStudents() {
   return (
     <div>
       <PageHeader title="Students" subtitle="Enroll and manage student accounts"
-        action={<button className="btn btn-primary" onClick={() => setModalOpen(true)}><Plus className="w-4 h-4" /> Enroll Student</button>} />
+        action={
+          <div className="flex gap-2">
+            <button className="btn btn-secondary" onClick={() => setBulkModalOpen(true)}><Users className="w-4 h-4" /> Bulk Enroll</button>
+            <button className="btn btn-primary" onClick={() => setModalOpen(true)}><Plus className="w-4 h-4" /> Enroll Student</button>
+          </div>
+        } />
 
       {students && students.length > 0 ? (
         <div className="space-y-3">
@@ -270,6 +409,86 @@ export default function AdminStudents() {
           </div>
           <button type="submit" className="btn btn-primary w-full">Enroll Student</button>
         </form>
+      </Modal>
+
+      <Modal open={bulkModalOpen} onClose={closeBulkModal} title="Bulk Enroll Students" size="xl">
+        {bulkResults ? (
+          <div className="space-y-4">
+            <p className="text-sm text-brown-600">
+              {bulkResults.filter((r) => r.success).length} of {bulkResults.length} students enrolled.
+              {bulkResults.some((r) => !r.success) && ' Check the failed rows below and try them again individually.'}
+            </p>
+            <div className="max-h-96 overflow-y-auto space-y-2">
+              {bulkResults.map((r, i) => (
+                <div key={i} className={`p-3 rounded-lg border ${r.success ? 'border-sage-200 bg-sage-50' : 'border-error-200 bg-error-50'}`}>
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="font-semibold text-brown-800">{r.first_name} {r.last_name}</p>
+                      <p className="text-sm text-brown-500">{r.email}</p>
+                      {r.success ? (
+                        <p className="text-sm text-brown-600 mt-1">Adm: <span className="font-mono">{r.admission_number}</span> • Password: <span className="font-mono">{r.password}</span></p>
+                      ) : (
+                        <p className="text-sm text-error-600 mt-1">{r.error}</p>
+                      )}
+                    </div>
+                    <span className={`badge ${r.success ? 'badge-sage' : 'badge-error'}`}>{r.success ? 'Enrolled' : 'Failed'}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <p className="text-xs text-brown-400">Copy down the passwords above before closing — they aren't stored anywhere retrievable afterward.</p>
+            <button className="btn btn-primary w-full" onClick={closeBulkModal}>Done</button>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div>
+              <label className="label">Class for this batch</label>
+              <select required value={bulkClassId} onChange={(e) => setBulkClassId(e.target.value)} className="input">
+                <option value="">Select class...</option>
+                {classes?.map((c) => (
+                  <option key={c.id} value={c.id}>{c.name} {c.arm}{c.stream ? ` (${c.stream})` : ''}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex gap-2">
+              <label className="btn btn-secondary text-sm cursor-pointer">
+                <Upload className="w-4 h-4" /> Upload CSV
+                <input type="file" accept=".csv" className="hidden" onChange={handleCsvUpload} />
+              </label>
+              <button type="button" className="btn btn-ghost text-sm" onClick={downloadCsvTemplate}>
+                <Download className="w-4 h-4" /> Download Template
+              </button>
+            </div>
+
+            <div className="max-h-80 overflow-y-auto space-y-2">
+              {bulkRows.map((row, i) => (
+                <div key={i} className="grid grid-cols-12 gap-2 items-center p-2 rounded-lg bg-cream-100">
+                  <input placeholder="First name" value={row.first_name} onChange={(e) => updateBulkRow(i, 'first_name', e.target.value)} className="input col-span-2 text-sm" />
+                  <input placeholder="Last name" value={row.last_name} onChange={(e) => updateBulkRow(i, 'last_name', e.target.value)} className="input col-span-2 text-sm" />
+                  <input placeholder="Email" type="email" value={row.email} onChange={(e) => updateBulkRow(i, 'email', e.target.value)} className="input col-span-3 text-sm" />
+                  <input placeholder="Phone (opt.)" value={row.phone} onChange={(e) => updateBulkRow(i, 'phone', e.target.value)} className="input col-span-2 text-sm" />
+                  <input placeholder="Parent email (opt.)" type="email" value={row.parent_email} onChange={(e) => updateBulkRow(i, 'parent_email', e.target.value)} className="input col-span-2 text-sm" />
+                  <button type="button" onClick={() => removeBulkRow(i)} className="col-span-1 p-2 rounded-lg hover:bg-error-50 text-error-500" aria-label="Remove row">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <button type="button" className="btn btn-ghost text-sm" onClick={addBulkRow}>
+              <Plus className="w-4 h-4" /> Add Row
+            </button>
+
+            <p className="text-xs text-brown-400">
+              Admission numbers and temporary passwords are generated automatically for each student — you'll see them in a summary after enrolling.
+            </p>
+
+            <button type="button" className="btn btn-primary w-full" onClick={handleBulkEnroll} disabled={bulkSubmitting}>
+              {bulkSubmitting ? 'Enrolling...' : `Enroll All (${bulkRows.filter((r) => r.first_name && r.last_name && r.email).length})`}
+            </button>
+          </div>
+        )}
       </Modal>
     </div>
   )
