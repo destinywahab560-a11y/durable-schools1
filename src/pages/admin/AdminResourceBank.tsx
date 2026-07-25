@@ -4,7 +4,7 @@ import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/stores/auth'
 import { PageHeader, Modal, Spinner, EmptyState } from '@/components/ui'
 import toast from 'react-hot-toast'
-import { Library, Plus, Search } from 'lucide-react'
+import { Library, Plus, Search, Upload, FileText } from 'lucide-react'
 
 export default function AdminResourceBank() {
   const { profile } = useAuthStore()
@@ -13,6 +13,8 @@ export default function AdminResourceBank() {
   const [modalOpen, setModalOpen] = useState(false)
   const [search, setSearch] = useState('')
   const [form, setForm] = useState({ title: '', description: '', file_url: '', topic: '', resource_type: 'past_question', subject_id: '' })
+  const [uploadFile, setUploadFile] = useState<File | null>(null)
+  const [uploading, setUploading] = useState(false)
 
   const { data: subjects } = useQuery({
     queryKey: ['subjects', schoolId],
@@ -38,11 +40,24 @@ export default function AdminResourceBank() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    let fileUrl = form.file_url
+
+    if (form.resource_type !== 'video' && uploadFile) {
+      setUploading(true)
+      const path = `${schoolId}/${Date.now()}-${uploadFile.name}`
+      const { error: uploadError } = await supabase.storage.from('resources').upload(path, uploadFile)
+      setUploading(false)
+      if (uploadError) { toast.error(`Upload failed: ${uploadError.message}`); return }
+      const { data: publicUrlData } = supabase.storage.from('resources').getPublicUrl(path)
+      fileUrl = publicUrlData.publicUrl
+    }
+
     const { error } = await supabase.from('resource_bank').insert({
       school_id: schoolId,
       title: form.title,
       description: form.description || null,
-      file_url: form.file_url || null,
+      file_url: fileUrl || null,
       topic: form.topic || null,
       resource_type: form.resource_type,
       subject_id: form.subject_id || null
@@ -51,6 +66,7 @@ export default function AdminResourceBank() {
     toast.success('Resource added')
     setModalOpen(false)
     setForm({ title: '', description: '', file_url: '', topic: '', resource_type: 'past_question', subject_id: '' })
+    setUploadFile(null)
     queryClient.invalidateQueries({ queryKey: ['resource-bank', schoolId] })
   }
 
@@ -122,15 +138,31 @@ export default function AdminResourceBank() {
               <option value="video">Video</option>
             </select>
           </div>
-          <div>
-            <label className="label">File URL</label>
-            <input value={form.file_url} onChange={(e) => setForm({ ...form, file_url: e.target.value })} className="input" placeholder="https://..." />
-          </div>
+          {form.resource_type === 'video' ? (
+            <div>
+              <label className="label">Video URL</label>
+              <input value={form.file_url} onChange={(e) => setForm({ ...form, file_url: e.target.value })} className="input" placeholder="https://youtube.com/..." />
+            </div>
+          ) : (
+            <div>
+              <label className="label">Document</label>
+              <label className="flex items-center gap-3 p-4 border-2 border-dashed border-cream-400 rounded-lg cursor-pointer hover:border-brown-300">
+                {uploadFile ? <FileText className="w-5 h-5 text-brown-500" /> : <Upload className="w-5 h-5 text-brown-300" />}
+                <span className="text-sm text-brown-500">{uploadFile ? uploadFile.name : 'Tap to choose a file from your phone'}</span>
+                <input
+                  type="file"
+                  accept=".pdf,.doc,.docx,.ppt,.pptx,.jpg,.jpeg,.png"
+                  className="hidden"
+                  onChange={(e) => setUploadFile(e.target.files?.[0] ?? null)}
+                />
+              </label>
+            </div>
+          )}
           <div>
             <label className="label">Description</label>
             <textarea rows={2} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="input" />
           </div>
-          <button type="submit" className="btn btn-primary w-full">Add Resource</button>
+          <button type="submit" className="btn btn-primary w-full" disabled={uploading}>{uploading ? 'Uploading...' : 'Add Resource'}</button>
         </form>
       </Modal>
     </div>
