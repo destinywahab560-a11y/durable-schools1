@@ -71,11 +71,12 @@ export default function TeacherGradebook() {
     } else {
       const { data: session } = await supabase
         .from('academic_sessions').select('id').eq('school_id', profile?.school_id).eq('is_current', true).maybeSingle()
+      if (!session) { toast.error('No current academic session is set. Ask an Admin to mark one as current under Sessions & Terms.'); return }
       const { error } = await supabase.from('gradebook').insert({
         student_id: gradeForm.student_id,
         subject_id: selectedSubject,
         class_id: selectedClass,
-        session_id: session?.id ?? null,
+        session_id: session.id,
         ca_score: ca, exam_score: exam, total_score: total, grade,
         teacher_remark: gradeForm.teacher_remark
       })
