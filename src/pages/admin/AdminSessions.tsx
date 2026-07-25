@@ -2,22 +2,37 @@ import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/stores/auth'
-import { PageHeader, Modal, Spinner, EmptyState } from '@/components/ui'
-import { TERM_NAMES, formatDate } from '@/lib/utils'
+import { PageHeader, Modal, Spinner, EmptyState, ConfirmDialog } from '@/components/ui'
 import toast from 'react-hot-toast'
-import { Calendar, Plus, CheckCircle2 } from 'lucide-react'
+import { Library, Plus, Search, Upload, FileText, Trash2 } from 'lucide-react'
 
-export default function AdminSessions() {
+export default function AdminResourceBank() {
   const { profile } = useAuthStore()
   const schoolId = profile?.school_id
   const queryClient = useQueryClient()
   const [modalOpen, setModalOpen] = useState(false)
-  const [form, setForm] = useState({ session_name: '', term: 'First Term', start_date: '', end_date: '' })
+  const [search, setSearch] = useState('')
+  const [form, setForm] = useState({ title: '', description: '', file_url: '', topic: '', resource_type: 'past_question', subject_id: '' })
+  const [uploadFile, setUploadFile] = useState<File | null>(null)
+  const [uploading, setUploading] = useState(false)
 
-  const { data: sessions, isLoading } = useQuery({
-    queryKey: ['sessions', schoolId],
+  const { data: subjects } = useQuery({
+    queryKey: ['subjects', schoolId],
     queryFn: async () => {
-      const { data } = await supabase.from('academic_sessions').select('*').eq('school_id', schoolId).order('start_date', { ascending: false })
+      const { data } = await supabase.from('subjects').select('*').eq('school_id', schoolId).order('name')
+      return data ?? []
+    },
+    enabled: !!schoolId
+  })
+
+  const { data: resources, isLoading } = useQuery({
+    queryKey: ['resource-bank', schoolId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('resource_bank')
+        .select('id, title, description, file_url, topic, resource_type, subject:subjects(name)')
+        .eq('school_id', schoolId)
+        .order('created_at', { ascending: false })
       return data ?? []
     },
     enabled: !!schoolId
@@ -25,80 +40,161 @@ export default function AdminSessions() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
-    const { error } = await supabase.from('academic_sessions').insert({ school_id: schoolId, ...form })
+
+    let fileUrl = form.file_url
+
+    if (form.resource_type !== 'video' && uploadFile) {
+      setUploading(true)
+      const path = `${schoolId}/${Date.now()}-${uploadFile.name}`
+      const { error: uploadError } = await supabase.storage.from('resources').upload(path, uploadFile)
+      setUploading(false)
+      if (uploadError) { toast.error(`Upload failed: ${uploadError.message}`); return }
+      const { data: publicUrlData } = supabase.storage.from('resources').getPublicUrl(path)
+      fileUrl = publicUrlData.publicUrl
+    }
+
+    const { error } = await supabase.from('resource_bank').insert({
+      school_id: schoolId,
+      title: form.title,
+      description: form.description || null,
+      file_url: fileUrl || null,
+      topic: form.topic || null,
+      resource_type: form.resource_type,
+      subject_id: form.subject_id || null
+    })
     if (error) { toast.error(error.message); return }
-    toast.success('Session created')
+    toast.success('Resource added')
     setModalOpen(false)
-    setForm({ session_name: '', term: 'First Term', start_date: '', end_date: '' })
-    queryClient.invalidateQueries({ queryKey: ['sessions', schoolId] })
+    setForm({ title: '', description: '', file_url: '', topic: '', resource_type: 'past_question', subject_id: '' })
+    setUploadFile(null)
+    queryClient.invalidateQueries({ queryKey: ['resource-bank', schoolId] })
   }
 
-  const setCurrent = async (id: string) => {
-    await supabase.from('academic_sessions').update({ is_current: false }).eq('school_id', schoolId)
-    const { error } = await supabase.from('academic_sessions').update({ is_current: true }).eq('id', id)
+  const [deleteId, setDeleteId] = useState<string | null>(null)
+  const handleDelete = async () => {
+    if (!deleteId) return
+    const resource = resources?.find((r: any) => r.id === deleteId)
+    // Clean up the uploaded file in Storage too, if this resource has one
+    // (public bucket URLs look like .../object/public/resources/<path>)
+    if (resource?.file_url?.includes('/resources/')) {
+      const path = resource.file_url.split('/resources/')[1]
+      if (path) await supabase.storage.from('resources').remove([path])
+    }
+    const { error } = await supabase.from('resource_bank').delete().eq('id', deleteId)
     if (error) { toast.error(error.message); return }
-    toast.success('Current term updated')
-    queryClient.invalidateQueries({ queryKey: ['sessions', schoolId] })
+    toast.success('Resource deleted')
+    setDeleteId(null)
+    queryClient.invalidateQueries({ queryKey: ['resource-bank', schoolId] })
   }
+
+  const filtered = resources?.filter((r: any) =>
+    r.title.toLowerCase().includes(search.toLowerCase()) ||
+    r.topic?.toLowerCase().includes(search.toLowerCase()) ||
+    r.subject?.name?.toLowerCase().includes(search.toLowerCase())
+  )
 
   if (isLoading) return <Spinner />
 
   return (
     <div>
-      <PageHeader title="Sessions & Terms" subtitle="Manage academic sessions and terms"
-        action={<button className="btn btn-primary" onClick={() => setModalOpen(true)}><Plus className="w-4 h-4" /> Add Session</button>} />
+      <PageHeader title="Resource Bank" subtitle="Library of past questions and reference materials"
+        action={<button className="btn btn-primary" onClick={() => setModalOpen(true)}><Plus className="w-4 h-4" /> Add Resource</button>} />
 
-      {sessions && sessions.length > 0 ? (
-        <div className="space-y-3">
-          {sessions.map((s) => (
-            <div key={s.id} className="card flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-lg bg-brown-100 text-brown-600 flex items-center justify-center">
-                  <Calendar className="w-5 h-5" />
+      <div className="relative mb-6">
+        <Search className="absolute left-3 top-3 w-5 h-5 text-brown-300" />
+        <input value={search} onChange={(e) => setSearch(e.target.value)} className="input pl-10" placeholder="Search by title, topic, or subject..." />
+      </div>
+
+      {filtered && filtered.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filtered.map((r: any) => (
+            <div key={r.id} className="card">
+              <div className="flex items-start gap-3 mb-2">
+                <div className="w-10 h-10 rounded-lg bg-sage-100 text-sage-500 flex items-center justify-center shrink-0">
+                  <Library className="w-5 h-5" />
                 </div>
-                <div>
-                  <p className="font-semibold text-brown-800">{s.session_name} — {s.term}</p>
-                  <p className="text-sm text-brown-400">{formatDate(s.start_date)} → {formatDate(s.end_date)}</p>
+                <div className="flex-1">
+                  <p className="font-semibold text-brown-800">{r.title}</p>
+                  {r.subject && <p className="text-sm text-brown-400">{r.subject.name}</p>}
                 </div>
+                <button onClick={() => setDeleteId(r.id)} className="p-2 rounded-lg hover:bg-error-50 text-error-500" aria-label="Delete resource">
+                  <Trash2 className="w-4 h-4" />
+                </button>
               </div>
-              {s.is_current ? (
-                <span className="badge badge-sage"><CheckCircle2 className="w-3 h-3 mr-1" /> Current</span>
-              ) : (
-                <button className="btn btn-ghost text-sm" onClick={() => setCurrent(s.id)}>Set as Current</button>
-              )}
+              {r.topic && <span className="badge badge-brown mb-2">{r.topic}</span>}
+              {r.description && <p className="text-sm text-brown-500 mt-2">{r.description}</p>}
+              {r.file_url && <a href={r.file_url} target="_blank" rel="noopener noreferrer" className="text-sm text-brown-600 hover:underline mt-2 inline-block">View resource →</a>}
             </div>
           ))}
         </div>
       ) : (
-        <EmptyState icon={Calendar} title="No sessions yet" description="Create your first academic session."
-          action={<button className="btn btn-primary" onClick={() => setModalOpen(true)}><Plus className="w-4 h-4" /> Add Session</button>} />
+        <EmptyState icon={Library} title="No resources yet" description="Add past questions and reference materials."
+          action={<button className="btn btn-primary" onClick={() => setModalOpen(true)}><Plus className="w-4 h-4" /> Add Resource</button>} />
       )}
 
-      <Modal open={modalOpen} onClose={() => setModalOpen(false)} title="Add Session">
+      <Modal open={modalOpen} onClose={() => setModalOpen(false)} title="Add Resource">
         <form onSubmit={handleCreate} className="space-y-4">
           <div>
-            <label className="label">Session Name</label>
-            <input required value={form.session_name} onChange={(e) => setForm({ ...form, session_name: e.target.value })} className="input" placeholder="e.g. 2025/2026" />
+            <label className="label">Title</label>
+            <input required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className="input" />
           </div>
           <div>
-            <label className="label">Term</label>
-            <select value={form.term} onChange={(e) => setForm({ ...form, term: e.target.value })} className="input">
-              {TERM_NAMES.map((t) => <option key={t} value={t}>{t}</option>)}
+            <label className="label">Subject</label>
+            <select value={form.subject_id} onChange={(e) => setForm({ ...form, subject_id: e.target.value })} className="input">
+              <option value="">No subject</option>
+              {subjects?.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="label">Start Date</label>
-              <input type="date" required value={form.start_date} onChange={(e) => setForm({ ...form, start_date: e.target.value })} className="input" />
-            </div>
-            <div>
-              <label className="label">End Date</label>
-              <input type="date" required value={form.end_date} onChange={(e) => setForm({ ...form, end_date: e.target.value })} className="input" />
-            </div>
+          <div>
+            <label className="label">Topic</label>
+            <input value={form.topic} onChange={(e) => setForm({ ...form, topic: e.target.value })} className="input" placeholder="e.g. Algebra" />
           </div>
-          <button type="submit" className="btn btn-primary w-full">Create Session</button>
+          <div>
+            <label className="label">Resource Type</label>
+            <select value={form.resource_type} onChange={(e) => setForm({ ...form, resource_type: e.target.value })} className="input">
+              <option value="past_question">Past Question</option>
+              <option value="reference">Reference Material</option>
+              <option value="textbook">Textbook</option>
+              <option value="video">Video</option>
+            </select>
+          </div>
+          {form.resource_type === 'video' ? (
+            <div>
+              <label className="label">Video URL</label>
+              <input value={form.file_url} onChange={(e) => setForm({ ...form, file_url: e.target.value })} className="input" placeholder="https://youtube.com/..." />
+            </div>
+          ) : (
+            <div>
+              <label className="label">Document</label>
+              <label className="flex items-center gap-3 p-4 border-2 border-dashed border-cream-400 rounded-lg cursor-pointer hover:border-brown-300">
+                {uploadFile ? <FileText className="w-5 h-5 text-brown-500" /> : <Upload className="w-5 h-5 text-brown-300" />}
+                <span className="text-sm text-brown-500">{uploadFile ? uploadFile.name : 'Tap to choose a file from your phone'}</span>
+                <input
+                  type="file"
+                  accept=".pdf,.doc,.docx,.ppt,.pptx,.jpg,.jpeg,.png"
+                  className="hidden"
+                  onChange={(e) => setUploadFile(e.target.files?.[0] ?? null)}
+                />
+              </label>
+            </div>
+          )}
+          <div>
+            <label className="label">Description</label>
+            <textarea rows={2} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="input" />
+          </div>
+          <button type="submit" className="btn btn-primary w-full" disabled={uploading}>{uploading ? 'Uploading...' : 'Add Resource'}</button>
         </form>
       </Modal>
+
+      <ConfirmDialog
+        open={!!deleteId}
+        onClose={() => setDeleteId(null)}
+        onConfirm={handleDelete}
+        title="Delete Resource"
+        message="This will remove the resource (and its uploaded file, if any) from the library. This cannot be undone."
+        confirmLabel="Delete"
+        danger
+      />
     </div>
   )
 }
