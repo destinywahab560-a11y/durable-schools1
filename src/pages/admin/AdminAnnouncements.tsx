@@ -2,10 +2,10 @@ import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/stores/auth'
-import { PageHeader, Modal, Spinner, EmptyState } from '@/components/ui'
+import { PageHeader, Modal, Spinner, EmptyState, ConfirmDialog } from '@/components/ui'
 import { formatDate } from '@/lib/utils'
 import toast from 'react-hot-toast'
-import { Megaphone, Plus, School } from 'lucide-react'
+import { Megaphone, Plus, School, Trash2 } from 'lucide-react'
 
 export default function AdminAnnouncements() {
   const { profile } = useAuthStore()
@@ -53,6 +53,16 @@ export default function AdminAnnouncements() {
     queryClient.invalidateQueries({ queryKey: ['announcements', schoolId] })
   }
 
+  const [deleteId, setDeleteId] = useState<string | null>(null)
+  const handleDelete = async () => {
+    if (!deleteId) return
+    const { error } = await supabase.from('announcements').delete().eq('id', deleteId)
+    if (error) { toast.error(error.message); return }
+    toast.success('Announcement deleted')
+    setDeleteId(null)
+    queryClient.invalidateQueries({ queryKey: ['announcements', schoolId] })
+  }
+
   if (isLoading) return <Spinner />
 
   return (
@@ -77,6 +87,9 @@ export default function AdminAnnouncements() {
                 <span className={`badge ${a.is_school_wide ? 'badge-amber' : 'badge-brown'}`}>
                   {a.is_school_wide ? <><School className="w-3 h-3 mr-1" /> School-wide</> : 'Class'}
                 </span>
+                <button onClick={() => setDeleteId(a.id)} className="p-2 rounded-lg hover:bg-error-50 text-error-500 ml-2" aria-label="Delete announcement">
+                  <Trash2 className="w-4 h-4" />
+                </button>
               </div>
               <p className="text-brown-600 text-sm mt-2">{a.body}</p>
             </div>
@@ -115,6 +128,16 @@ export default function AdminAnnouncements() {
           <button type="submit" className="btn btn-primary w-full">Post Announcement</button>
         </form>
       </Modal>
+
+      <ConfirmDialog
+        open={!!deleteId}
+        onClose={() => setDeleteId(null)}
+        onConfirm={handleDelete}
+        title="Delete Announcement"
+        message="This will remove the announcement for everyone. This cannot be undone."
+        confirmLabel="Delete"
+        danger
+      />
     </div>
   )
 }
