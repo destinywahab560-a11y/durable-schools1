@@ -2,10 +2,10 @@ import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/stores/auth'
-import { PageHeader, Modal, Spinner, EmptyState } from '@/components/ui'
+import { PageHeader, Modal, Spinner, EmptyState, ConfirmDialog } from '@/components/ui'
 import { formatDate, formatCurrency } from '@/lib/utils'
 import toast from 'react-hot-toast'
-import { Sun, Plus, Users } from 'lucide-react'
+import { Sun, Plus, Trash2 } from 'lucide-react'
 
 export default function AdminHolidayPrograms() {
   const { profile } = useAuthStore()
@@ -40,6 +40,27 @@ export default function AdminHolidayPrograms() {
     queryClient.invalidateQueries({ queryKey: ['holiday-programs', schoolId] })
   }
 
+  const [deleteId, setDeleteId] = useState<string | null>(null)
+  const [deleteRegCount, setDeleteRegCount] = useState(0)
+
+  const openDeleteConfirm = async (programId: string) => {
+    const { count } = await supabase
+      .from('holiday_registrations')
+      .select('id', { count: 'exact', head: true })
+      .eq('program_id', programId)
+    setDeleteRegCount(count ?? 0)
+    setDeleteId(programId)
+  }
+
+  const handleDelete = async () => {
+    if (!deleteId) return
+    const { error } = await supabase.from('holiday_programs').delete().eq('id', deleteId)
+    if (error) { toast.error(error.message); return }
+    toast.success('Holiday program deleted')
+    setDeleteId(null)
+    queryClient.invalidateQueries({ queryKey: ['holiday-programs', schoolId] })
+  }
+
   if (isLoading) return <Spinner />
 
   return (
@@ -61,7 +82,12 @@ export default function AdminHolidayPrograms() {
                     <p className="text-sm text-brown-400">{formatDate(p.start_date)} → {formatDate(p.end_date)}</p>
                   </div>
                 </div>
-                <p className="text-lg font-bold text-brown-700">{formatCurrency(p.fee_amount)}</p>
+                <div className="flex items-center gap-1">
+                  <p className="text-lg font-bold text-brown-700">{formatCurrency(p.fee_amount)}</p>
+                  <button onClick={() => openDeleteConfirm(p.id)} className="p-2 rounded-lg hover:bg-error-50 text-error-500" aria-label="Delete program">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
               {p.description && <p className="text-sm text-brown-500">{p.description}</p>}
             </div>
@@ -99,6 +125,20 @@ export default function AdminHolidayPrograms() {
           <button type="submit" className="btn btn-primary w-full">Create Program</button>
         </form>
       </Modal>
+
+      <ConfirmDialog
+        open={!!deleteId}
+        onClose={() => setDeleteId(null)}
+        onConfirm={handleDelete}
+        title="Delete Holiday Program"
+        message={
+          deleteRegCount > 0
+            ? `This will remove this program AND ${deleteRegCount} student registration(s) tied to it. This cannot be undone.`
+            : 'This will remove this holiday program. This cannot be undone.'
+        }
+        confirmLabel="Delete"
+        danger
+      />
     </div>
   )
 }
