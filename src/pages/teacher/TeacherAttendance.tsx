@@ -61,11 +61,12 @@ export default function TeacherAttendance() {
       const classroom = classrooms?.find((c: any) => c.class_id === selectedClass)
       const { data: session } = await supabase
         .from('academic_sessions').select('id').eq('school_id', profile?.school_id).eq('is_current', true).maybeSingle()
+      if (!session) { toast.error('No current academic session is set. Ask an Admin to mark one as current under Sessions & Terms.'); return }
       const { error } = await supabase.from('attendance').insert({
         student_id: studentId,
         class_id: selectedClass,
         subject_id: classroom?.subject_id ?? null,
-        session_id: session?.id ?? null,
+        session_id: session.id,
         date,
         status
       })
