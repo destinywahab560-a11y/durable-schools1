@@ -12,6 +12,7 @@ export interface Profile {
   bio: string | null
   qualification: string | null
   preferred_channel: 'sms' | 'email' | 'push' | 'whatsapp'
+  notification_channels?: string[]
   is_active: boolean
   two_factor_enabled: boolean
   created_at: string
