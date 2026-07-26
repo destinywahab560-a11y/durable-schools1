@@ -3,8 +3,9 @@ import { useAuthStore } from '@/stores/auth'
 import { supabase } from '@/lib/supabase'
 import { PageHeader, Spinner } from '@/components/ui'
 import { getInitials } from '@/lib/utils'
+import { enablePushNotifications } from '@/lib/push'
 import toast from 'react-hot-toast'
-import { User, Mail, Phone, Save } from 'lucide-react'
+import { User, Mail, Phone, Save, Bell } from 'lucide-react'
 
 export default function ProfilePage() {
   const { profile, refreshProfile } = useAuthStore()
@@ -16,8 +17,17 @@ export default function ProfilePage() {
     phone: profile?.phone ?? '',
     bio: profile?.bio ?? '',
     qualification: profile?.qualification ?? '',
-    preferred_channel: profile?.preferred_channel ?? 'email'
+    notification_channels: profile?.notification_channels ?? ['email']
   })
+
+  const toggleChannel = (channel: string) => {
+    setForm((prev) => ({
+      ...prev,
+      notification_channels: prev.notification_channels.includes(channel)
+        ? prev.notification_channels.filter((c: string) => c !== channel)
+        : [...prev.notification_channels, channel]
+    }))
+  }
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -28,13 +38,26 @@ export default function ProfilePage() {
       phone: form.phone || null,
       bio: form.bio || null,
       qualification: form.qualification || null,
-      preferred_channel: form.preferred_channel
+      notification_channels: form.notification_channels.length > 0 ? form.notification_channels : ['email']
     }).eq('id', profile?.id)
     setSaving(false)
     if (error) { toast.error(error.message); return }
     toast.success('Profile updated')
     setEditing(false)
     refreshProfile()
+  }
+
+  const [enablingPush, setEnablingPush] = useState(false)
+  const handleEnablePush = async () => {
+    if (!profile?.id) return
+    setEnablingPush(true)
+    try {
+      await enablePushNotifications(profile.id)
+      toast.success('Push notifications enabled on this device!')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not enable push notifications')
+    }
+    setEnablingPush(false)
   }
 
   if (!profile) return <Spinner />
@@ -78,13 +101,35 @@ export default function ProfilePage() {
                 </div>
               </div>
               <div>
-                <label className="label">Preferred Notification Channel</label>
-                <select value={form.preferred_channel} onChange={(e) => setForm({ ...form, preferred_channel: e.target.value as any })} className="input">
-                  <option value="email">Email</option>
-                  <option value="sms">SMS</option>
-                  <option value="push">Push Notification</option>
-                  <option value="whatsapp">WhatsApp</option>
-                </select>
+                <label className="label">Notification Channels</label>
+                <p className="text-xs text-brown-400 mb-2">Pick as many as you'd like — you'll get updates through all of them.</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { value: 'email', label: 'Email' },
+                    { value: 'push', label: 'Push Notification' },
+                    { value: 'sms', label: 'SMS' },
+                    { value: 'whatsapp', label: 'WhatsApp' }
+                  ].map((ch) => (
+                    <label key={ch.value} className="flex items-center gap-2 text-sm p-2 rounded-lg bg-cream-100">
+                      <input
+                        type="checkbox"
+                        checked={form.notification_channels.includes(ch.value)}
+                        onChange={() => toggleChannel(ch.value)}
+                      />
+                      {ch.label}
+                    </label>
+                  ))}
+                </div>
+                {form.notification_channels.includes('push') && (
+                  <button
+                    type="button"
+                    onClick={handleEnablePush}
+                    disabled={enablingPush}
+                    className="btn btn-secondary text-sm mt-2 w-full"
+                  >
+                    <Bell className="w-4 h-4" /> {enablingPush ? 'Enabling...' : 'Enable Push on This Device'}
+                  </button>
+                )}
               </div>
               {profile.role === 'teacher' && (
                 <>
@@ -122,8 +167,12 @@ export default function ProfilePage() {
                 </div>
               </div>
               <div>
-                <p className="text-sm text-brown-400">Preferred Channel</p>
-                <p className="text-brown-700 capitalize">{profile.preferred_channel}</p>
+                <p className="text-sm text-brown-400">Notification Channels</p>
+                <p className="text-brown-700 capitalize">
+                  {profile.notification_channels && profile.notification_channels.length > 0
+                    ? profile.notification_channels.join(', ')
+                    : 'Email'}
+                </p>
               </div>
               {profile.role === 'teacher' && (
                 <>
