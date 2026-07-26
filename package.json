@@ -28,6 +28,10 @@
     "react-router-dom": "^6.26.2",
     "recharts": "^2.12.7",
     "tailwind-merge": "^2.5.2",
+    "workbox-expiration": "^7.4.1",
+    "workbox-precaching": "^7.4.1",
+    "workbox-routing": "^7.4.1",
+    "workbox-strategies": "^7.4.1",
     "zustand": "^5.0.0"
   },
   "devDependencies": {
