@@ -36,6 +36,7 @@ import ParentFees from '@/pages/parent/ParentFees'
 import ParentMessages from '@/pages/parent/ParentMessages'
 import ProfilePage from '@/pages/ProfilePage'
 import CalendarPage from '@/pages/CalendarPage'
+import NotificationsPage from '@/pages/NotificationsPage'
 import ProtectedRoute from '@/components/auth/ProtectedRoute'
 
 function App() {
@@ -104,6 +105,7 @@ function App() {
         {/* Shared routes */}
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/calendar" element={<CalendarPage />} />
+        <Route path="/notifications" element={<NotificationsPage />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />
