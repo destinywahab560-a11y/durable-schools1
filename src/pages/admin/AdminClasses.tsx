@@ -38,8 +38,9 @@ export default function AdminClasses() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
-    const level = form.name
-    const isSS = level.startsWith('SS')
+    const isSS = form.name.startsWith('SS')
+    const isJSS = form.name.startsWith('JSS')
+    const level = isSS ? 'ss' : isJSS ? 'jss' : 'primary'
     const { error } = await supabase.from('classes').insert({
       school_id: schoolId,
       name: form.name,
