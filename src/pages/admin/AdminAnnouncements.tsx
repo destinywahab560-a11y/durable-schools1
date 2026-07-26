@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/stores/auth'
 import { PageHeader, Modal, Spinner, EmptyState, ConfirmDialog } from '@/components/ui'
 import { formatDate } from '@/lib/utils'
+import { sendNotification } from '@/lib/notify'
 import toast from 'react-hot-toast'
 import { Megaphone, Plus, School, Trash2 } from 'lucide-react'
 
@@ -47,7 +48,26 @@ export default function AdminAnnouncements() {
       is_school_wide: form.is_school_wide
     })
     if (error) { toast.error(error.message); return }
-    toast.success('Announcement posted')
+
+    try {
+      let recipientIds: string[] = []
+      if (form.is_school_wide) {
+        const { data } = await supabase.from('profiles').select('id').eq('school_id', schoolId).neq('id', profile?.id)
+        recipientIds = (data ?? []).map((p) => p.id)
+      } else if (form.target_class_id) {
+        const { data: enrolled } = await supabase.from('student_enrollments').select('student_id, parent_id').eq('class_id', form.target_class_id)
+        const { data: classroomTeachers } = await supabase.from('classrooms').select('teacher_id').eq('class_id', form.target_class_id)
+        const ids = new Set<string>()
+        ;(enrolled ?? []).forEach((e) => { if (e.student_id) ids.add(e.student_id); if (e.parent_id) ids.add(e.parent_id) })
+        ;(classroomTeachers ?? []).forEach((c) => { if (c.teacher_id) ids.add(c.teacher_id) })
+        recipientIds = [...ids]
+      }
+      const { count } = await sendNotification({ userIds: recipientIds }, { title: `New Announcement: ${form.title}`, body: form.body, relatedType: 'announcement' })
+      toast.success(count > 0 ? `Announcement posted and ${count} people notified` : 'Announcement posted')
+    } catch {
+      toast.success('Announcement posted (notification delivery had an issue — check the recipients manually)')
+    }
+
     setModalOpen(false)
     setForm({ title: '', body: '', target_class_id: '', is_school_wide: true })
     queryClient.invalidateQueries({ queryKey: ['announcements', schoolId] })
