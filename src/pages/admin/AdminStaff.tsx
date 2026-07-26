@@ -404,7 +404,7 @@ export default function AdminStaff() {
                   <input placeholder="Email" type="email" value={row.email} onChange={(e) => updateBulkRow(i, 'email', e.target.value)} className="input col-span-3 text-sm" />
                   <select value={row.class_id} onChange={(e) => updateBulkRow(i, 'class_id', e.target.value)} className="input col-span-2 text-sm">
                     <option value="">No class</option>
-                    {classes?.map((c) => <option key={c.id} value={c.id}>{c.name} {c.arm}</option>)}
+                    {classes?.map((c) => <option key={c.id} value={c.id}>{c.name} {c.arm}{c.stream ? ` (${c.stream})` : ''}</option>)}
                   </select>
                   <select value={row.subject_id} onChange={(e) => updateBulkRow(i, 'subject_id', e.target.value)} className="input col-span-2 text-sm" disabled={!row.class_id}>
                     <option value="">{row.class_id ? 'No subject' : 'Pick class first'}</option>
