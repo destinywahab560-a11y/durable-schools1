@@ -133,7 +133,7 @@ export default function AdminParents() {
                 </div>
                 <div className="flex gap-2">
                   <button className="btn btn-secondary text-sm" onClick={() => setLinkModalTarget({ parentId: p.id, parentName: `${p.first_name} ${p.last_name}` })}>
-                    <Link2 className="w-4 h-4" /> Link Child
+                    <Link2 className="w-4 h-4" /> {p.enrollments?.length > 0 ? 'Add Another Child' : 'Link Child'}
                   </button>
                   <button onClick={() => setDeleteTarget({ id: p.id, name: `${p.first_name} ${p.last_name}` })} className="p-2 rounded-lg hover:bg-error-50 text-error-500" aria-label="Delete parent">
                     <Trash2 className="w-4 h-4" />
