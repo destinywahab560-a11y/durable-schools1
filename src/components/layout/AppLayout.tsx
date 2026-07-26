@@ -1,12 +1,14 @@
 import { useState } from 'react'
 import { NavLink, useNavigate, Outlet } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
+import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/stores/auth'
 import { cn, getInitials } from '@/lib/utils'
 import {
   LayoutDashboard, GraduationCap, BookOpen, ClipboardList, Users,
   DollarSign, Megaphone, Calendar, User, LogOut, Menu, X,
   School, FileText, History, Sun, Library, MessageSquare,
-  Award, BarChart3, ClipboardCheck, Settings, Heart
+  Award, BarChart3, ClipboardCheck, Settings, Heart, Bell
 } from 'lucide-react'
 
 interface NavItem {
@@ -78,6 +80,20 @@ function getHomePath(role: string | undefined): string {
 
 export default function AppLayout() {
   const { profile, signOut } = useAuthStore()
+
+  const { data: unreadCount } = useQuery({
+    queryKey: ['unread-notifications-count', profile?.id],
+    queryFn: async () => {
+      const { count } = await supabase
+        .from('notifications')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', profile?.id)
+        .eq('is_read', false)
+      return count ?? 0
+    },
+    enabled: !!profile?.id,
+    refetchInterval: 60000
+  })
   const navigate = useNavigate()
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
@@ -164,6 +180,16 @@ export default function AppLayout() {
           </div>
 
           <div className="flex items-center gap-3">
+            <button
+              onClick={() => navigate('/notifications')}
+              className="relative p-2 rounded-lg hover:bg-brown-50 text-brown-600"
+              aria-label="Notifications"
+            >
+              <Bell className="w-5 h-5" />
+              {!!unreadCount && unreadCount > 0 && (
+                <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-error-500" />
+              )}
+            </button>
             <span className="badge badge-brown hidden sm:inline-flex">{roleLabel}</span>
             <div className="w-10 h-10 rounded-full bg-brown-600 text-cream-100 flex items-center justify-center font-semibold text-sm">
               {getInitials(fullName)}
