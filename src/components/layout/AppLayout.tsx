@@ -19,6 +19,7 @@ interface NavItem {
 
 const adminNav: NavItem[] = [
   { label: 'Dashboard', path: '/admin', icon: LayoutDashboard },
+  { label: 'Analytics', path: '/admin/analytics', icon: BarChart3 },
   { label: 'Classes & Arms', path: '/admin/classes', icon: School },
   { label: 'Subjects', path: '/admin/subjects', icon: BookOpen },
   { label: 'Sessions & Terms', path: '/admin/sessions', icon: Calendar },
