@@ -8,7 +8,7 @@ import {
   LayoutDashboard, GraduationCap, BookOpen, ClipboardList, Users,
   DollarSign, Megaphone, Calendar, User, LogOut, Menu, X,
   School, FileText, History, Sun, Library, MessageSquare,
-  Award, BarChart3, ClipboardCheck, Settings, Heart, Bell
+  Award, BarChart3, ClipboardCheck, Settings, Heart, Bell, Clock
 } from 'lucide-react'
 
 interface NavItem {
@@ -23,6 +23,7 @@ const adminNav: NavItem[] = [
   { label: 'Classes & Arms', path: '/admin/classes', icon: School },
   { label: 'Subjects', path: '/admin/subjects', icon: BookOpen },
   { label: 'Sessions & Terms', path: '/admin/sessions', icon: Calendar },
+  { label: 'Timetable', path: '/admin/timetable', icon: Clock },
   { label: 'Staff', path: '/admin/staff', icon: Users },
   { label: 'Assignments', path: '/admin/assignments', icon: ClipboardCheck },
   { label: 'Students', path: '/admin/students', icon: GraduationCap },
@@ -40,6 +41,7 @@ const teacherNav: NavItem[] = [
   { label: 'Gradebook', path: '/teacher/gradebook', icon: BarChart3 },
   { label: 'Attendance', path: '/teacher/attendance', icon: ClipboardCheck },
   { label: 'Messages', path: '/teacher/messages', icon: MessageSquare },
+  { label: 'Timetable', path: '/timetable', icon: Clock },
   { label: 'Calendar', path: '/calendar', icon: Calendar }
 ]
 
@@ -48,6 +50,7 @@ const studentNav: NavItem[] = [
   { label: 'Assessments', path: '/student/assessments', icon: ClipboardList },
   { label: 'Results', path: '/student/results', icon: FileText },
   { label: 'Messages', path: '/student/messages', icon: MessageSquare },
+  { label: 'Timetable', path: '/timetable', icon: Clock },
   { label: 'Calendar', path: '/calendar', icon: Calendar }
 ]
 
@@ -55,6 +58,7 @@ const parentNav: NavItem[] = [
   { label: 'Dashboard', path: '/parent', icon: LayoutDashboard },
   { label: 'Performance', path: '/parent/performance', icon: BarChart3 },
   { label: 'Attendance', path: '/parent/attendance', icon: ClipboardCheck },
+  { label: 'Timetable', path: '/timetable', icon: Clock },
   { label: 'Fees', path: '/parent/fees', icon: DollarSign },
   { label: 'Messages', path: '/parent/messages', icon: MessageSquare }
 ]
