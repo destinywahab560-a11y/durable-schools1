@@ -39,6 +39,7 @@ import ParentMessages from '@/pages/parent/ParentMessages'
 import ProfilePage from '@/pages/ProfilePage'
 import CalendarPage from '@/pages/CalendarPage'
 import TimetablePage from '@/pages/TimetablePage'
+import LiveClassRoom from '@/pages/LiveClassRoom'
 import NotificationsPage from '@/pages/NotificationsPage'
 import ProtectedRoute from '@/components/auth/ProtectedRoute'
 
@@ -112,6 +113,7 @@ function App() {
         <Route path="/calendar" element={<CalendarPage />} />
         <Route path="/timetable" element={<TimetablePage />} />
         <Route path="/notifications" element={<NotificationsPage />} />
+        <Route path="/live/:id" element={<LiveClassRoom />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />
