@@ -7,6 +7,7 @@ import PaymentStatusPage from '@/pages/PaymentStatusPage'
 import AppLayout from '@/components/layout/AppLayout'
 import AdminDashboard from '@/pages/admin/AdminDashboard'
 import AdminAnalytics from '@/pages/admin/AdminAnalytics'
+import AdminTimetable from '@/pages/admin/AdminTimetable'
 import AdminClasses from '@/pages/admin/AdminClasses'
 import AdminSubjects from '@/pages/admin/AdminSubjects'
 import AdminSessions from '@/pages/admin/AdminSessions'
@@ -37,6 +38,7 @@ import ParentFees from '@/pages/parent/ParentFees'
 import ParentMessages from '@/pages/parent/ParentMessages'
 import ProfilePage from '@/pages/ProfilePage'
 import CalendarPage from '@/pages/CalendarPage'
+import TimetablePage from '@/pages/TimetablePage'
 import NotificationsPage from '@/pages/NotificationsPage'
 import ProtectedRoute from '@/components/auth/ProtectedRoute'
 
@@ -69,6 +71,7 @@ function App() {
         {/* Admin routes */}
         <Route path="/admin" element={<AdminDashboard />} />
         <Route path="/admin/analytics" element={<AdminAnalytics />} />
+        <Route path="/admin/timetable" element={<AdminTimetable />} />
         <Route path="/admin/classes" element={<AdminClasses />} />
         <Route path="/admin/subjects" element={<AdminSubjects />} />
         <Route path="/admin/sessions" element={<AdminSessions />} />
@@ -107,6 +110,7 @@ function App() {
         {/* Shared routes */}
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/calendar" element={<CalendarPage />} />
+        <Route path="/timetable" element={<TimetablePage />} />
         <Route path="/notifications" element={<NotificationsPage />} />
       </Route>
 
