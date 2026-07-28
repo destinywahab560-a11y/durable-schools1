@@ -8,7 +8,7 @@ import {
   LayoutDashboard, GraduationCap, BookOpen, ClipboardList, Users,
   DollarSign, Megaphone, Calendar, User, LogOut, Menu, X,
   School, FileText, History, Sun, Library, MessageSquare,
-  Award, BarChart3, ClipboardCheck, Settings, Heart, Bell, Clock
+  Award, BarChart3, ClipboardCheck, Settings, Heart, Bell, Clock, ArrowRight
 } from 'lucide-react'
 
 interface NavItem {
@@ -27,6 +27,7 @@ const adminNav: NavItem[] = [
   { label: 'Staff', path: '/admin/staff', icon: Users },
   { label: 'Assignments', path: '/admin/assignments', icon: ClipboardCheck },
   { label: 'Students', path: '/admin/students', icon: GraduationCap },
+  { label: 'Bulk Promotion', path: '/admin/promotion', icon: ArrowRight },
   { label: 'Parents', path: '/admin/parents', icon: Heart },
   { label: 'Fees & Billing', path: '/admin/fees', icon: DollarSign },
   { label: 'Announcements', path: '/admin/announcements', icon: Megaphone },
