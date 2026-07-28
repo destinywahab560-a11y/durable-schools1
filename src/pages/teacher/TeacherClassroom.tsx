@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { PageHeader, Modal, Spinner, EmptyState } from '@/components/ui'
@@ -14,7 +14,7 @@ export default function TeacherClassroom() {
   const [materialModal, setMaterialModal] = useState(false)
   const [liveModal, setLiveModal] = useState(false)
   const [matForm, setMatForm] = useState({ title: '', description: '', file_url: '', external_url: '', topic: '', week: '', file_type: 'pdf' })
-  const [liveForm, setLiveForm] = useState({ title: '', scheduled_at: '', duration_minutes: '60' })
+  const [liveForm, setLiveForm] = useState({ title: '', scheduled_at: '', duration_minutes: '60', meeting_url: '' })
 
   const { data: classroom, isLoading } = useQuery({
     queryKey: ['classroom', id],
@@ -81,12 +81,13 @@ export default function TeacherClassroom() {
       classroom_id: id,
       title: liveForm.title,
       scheduled_at: liveForm.scheduled_at,
-      duration_minutes: parseInt(liveForm.duration_minutes)
+      duration_minutes: parseInt(liveForm.duration_minutes),
+      meeting_url: liveForm.meeting_url || null
     })
     if (error) { toast.error(error.message); return }
     toast.success('Live class scheduled')
     setLiveModal(false)
-    setLiveForm({ title: '', scheduled_at: '', duration_minutes: '60' })
+    setLiveForm({ title: '', scheduled_at: '', duration_minutes: '60', meeting_url: '' })
     queryClient.invalidateQueries({ queryKey: ['live-classes', id] })
   }
 
@@ -178,9 +179,7 @@ export default function TeacherClassroom() {
                   </div>
                   <div className="flex items-center gap-2">
                     <span className={`badge ${lc.status === 'live' ? 'badge-error' : lc.status === 'ended' ? 'badge-brown' : 'badge-amber'}`}>{lc.status}</span>
-                    {lc.status !== 'ended' && lc.status !== 'cancelled' && (
-                      <Link to={`/live/${lc.id}`} className="btn btn-secondary text-sm">Start</Link>
-                    )}
+                    {lc.meeting_url && <a href={lc.meeting_url} target="_blank" rel="noopener noreferrer" className="btn btn-secondary text-sm">Start</a>}
                   </div>
                 </div>
               ))}
@@ -271,7 +270,10 @@ export default function TeacherClassroom() {
             <label className="label">Duration (minutes)</label>
             <input type="number" required value={liveForm.duration_minutes} onChange={(e) => setLiveForm({ ...liveForm, duration_minutes: e.target.value })} className="input" />
           </div>
-          <p className="text-xs text-brown-400">A private video room is created automatically — no external link needed.</p>
+          <div>
+            <label className="label">Meeting URL (Zoom, Google Meet, etc.)</label>
+            <input value={liveForm.meeting_url} onChange={(e) => setLiveForm({ ...liveForm, meeting_url: e.target.value })} className="input" placeholder="https://meet.google.com/..." />
+          </div>
           <button type="submit" className="btn btn-primary w-full">Schedule Class</button>
         </form>
       </Modal>
