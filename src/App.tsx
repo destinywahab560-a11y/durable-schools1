@@ -8,6 +8,7 @@ import AppLayout from '@/components/layout/AppLayout'
 import AdminDashboard from '@/pages/admin/AdminDashboard'
 import AdminAnalytics from '@/pages/admin/AdminAnalytics'
 import AdminTimetable from '@/pages/admin/AdminTimetable'
+import AdminPromotion from '@/pages/admin/AdminPromotion'
 import AdminClasses from '@/pages/admin/AdminClasses'
 import AdminSubjects from '@/pages/admin/AdminSubjects'
 import AdminSessions from '@/pages/admin/AdminSessions'
@@ -72,6 +73,7 @@ function App() {
         <Route path="/admin" element={<AdminDashboard />} />
         <Route path="/admin/analytics" element={<AdminAnalytics />} />
         <Route path="/admin/timetable" element={<AdminTimetable />} />
+        <Route path="/admin/promotion" element={<AdminPromotion />} />
         <Route path="/admin/classes" element={<AdminClasses />} />
         <Route path="/admin/subjects" element={<AdminSubjects />} />
         <Route path="/admin/sessions" element={<AdminSessions />} />
