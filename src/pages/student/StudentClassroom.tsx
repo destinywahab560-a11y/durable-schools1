@@ -1,4 +1,4 @@
-import { useParams, Link } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { PageHeader, Spinner, EmptyState } from '@/components/ui'
@@ -91,11 +91,9 @@ export default function StudentClassroom() {
                   </div>
                   <div className="flex items-center gap-2">
                     <span className={`badge ${lc.status === 'live' ? 'badge-error' : lc.status === 'ended' ? 'badge-brown' : 'badge-amber'}`}>{lc.status}</span>
-                    {lc.status === 'live' ? (
-                      <Link to={`/live/${lc.id}`} className="btn btn-secondary text-sm">Join</Link>
-                    ) : lc.status === 'scheduled' ? (
-                      <span className="text-xs text-brown-300">Not started yet</span>
-                    ) : null}
+                    {lc.meeting_url && lc.status !== 'ended' && (
+                      <a href={lc.meeting_url} target="_blank" rel="noopener noreferrer" className="btn btn-secondary text-sm">Join</a>
+                    )}
                     {lc.recording_url && (
                       <a href={lc.recording_url} target="_blank" rel="noopener noreferrer" className="btn btn-ghost text-sm">Recording</a>
                     )}
