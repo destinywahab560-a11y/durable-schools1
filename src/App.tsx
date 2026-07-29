@@ -40,6 +40,8 @@ import ParentMessages from '@/pages/parent/ParentMessages'
 import ProfilePage from '@/pages/ProfilePage'
 import CalendarPage from '@/pages/CalendarPage'
 import TimetablePage from '@/pages/TimetablePage'
+import PTAForumPage from '@/pages/PTAForumPage'
+import PTAThreadPage from '@/pages/PTAThreadPage'
 import NotificationsPage from '@/pages/NotificationsPage'
 import ProtectedRoute from '@/components/auth/ProtectedRoute'
 
@@ -113,6 +115,8 @@ function App() {
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/calendar" element={<CalendarPage />} />
         <Route path="/timetable" element={<TimetablePage />} />
+        <Route path="/pta" element={<PTAForumPage />} />
+        <Route path="/pta/:id" element={<PTAThreadPage />} />
         <Route path="/notifications" element={<NotificationsPage />} />
       </Route>
 
