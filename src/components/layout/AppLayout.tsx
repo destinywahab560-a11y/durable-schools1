@@ -29,6 +29,7 @@ const adminNav: NavItem[] = [
   { label: 'Students', path: '/admin/students', icon: GraduationCap },
   { label: 'Bulk Promotion', path: '/admin/promotion', icon: ArrowRight },
   { label: 'Parents', path: '/admin/parents', icon: Heart },
+  { label: 'PTA Discussion', path: '/pta', icon: Users },
   { label: 'Fees & Billing', path: '/admin/fees', icon: DollarSign },
   { label: 'Announcements', path: '/admin/announcements', icon: Megaphone },
   { label: 'Holiday Programs', path: '/admin/holidays', icon: Sun },
@@ -43,6 +44,7 @@ const teacherNav: NavItem[] = [
   { label: 'Attendance', path: '/teacher/attendance', icon: ClipboardCheck },
   { label: 'Messages', path: '/teacher/messages', icon: MessageSquare },
   { label: 'Timetable', path: '/timetable', icon: Clock },
+  { label: 'PTA Discussion', path: '/pta', icon: Users },
   { label: 'Calendar', path: '/calendar', icon: Calendar }
 ]
 
@@ -61,6 +63,7 @@ const parentNav: NavItem[] = [
   { label: 'Attendance', path: '/parent/attendance', icon: ClipboardCheck },
   { label: 'Timetable', path: '/timetable', icon: Clock },
   { label: 'Fees', path: '/parent/fees', icon: DollarSign },
+  { label: 'PTA Discussion', path: '/pta', icon: Users },
   { label: 'Messages', path: '/parent/messages', icon: MessageSquare }
 ]
 
