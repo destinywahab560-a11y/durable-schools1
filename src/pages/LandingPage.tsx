@@ -25,19 +25,19 @@ export default function LandingPage() {
           <div className="max-w-3xl">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-100 text-amber-600 text-sm font-medium mb-6">
               <Award className="w-4 h-4" />
-              Nigerian K-12 Learning & School Management
+              Durable Foundation School (Primary) & Durable Comprehensive High School (Secondary)
             </div>
             <h1 className="text-4xl lg:text-6xl font-display font-bold text-brown-800 leading-tight mb-6">
-              Where schools run smarter, and students learn deeper.
+              Where Durable Schools runs smarter, and every student learns deeper.
             </h1>
             <p className="text-lg text-brown-500 mb-8 leading-relaxed">
-              Durable Schools unites teachers, students, parents, and administrators on one
-              platform — from class management and live lessons to assessments, results, and
-              payments. Built for the Nigerian school system, optimized for low-bandwidth.
+              One platform for both Durable Schools branches, uniting teachers, students,
+              parents, and administrators — from class management and live lessons to
+              assessments, results, and payments.
             </p>
             <div className="flex flex-col sm:flex-row gap-4">
               <Link to="/auth?mode=signup" className="btn btn-primary text-base px-6 py-3">
-                Start Your School <ArrowRight className="w-5 h-5" />
+                Get Started <ArrowRight className="w-5 h-5" />
               </Link>
               <Link to="/auth" className="btn btn-outline text-base px-6 py-3">
                 Sign In
@@ -51,19 +51,19 @@ export default function LandingPage() {
       <section className="max-w-7xl mx-auto px-4 lg:px-8 py-16 lg:py-24">
         <div className="text-center mb-12">
           <h2 className="text-3xl lg:text-4xl font-display font-bold text-brown-800 mb-3">
-            Everything your school needs, in one place
+            Everything both branches need, in one place
           </h2>
           <p className="text-brown-400 max-w-2xl mx-auto">
-            From Primary 1 to SS3, across Science, Arts, and Commercial streams —
-            Durable Schools handles the full academic lifecycle.
+            From Primary 1 through SS3 — across Science, Arts, and Commercial streams at
+            Durable Comprehensive High School — one platform handles the full academic lifecycle.
           </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {[
-            { icon: BookOpen, title: 'Academic Structure', desc: 'Full Nigerian K-12 class setup with arms, streams, subjects, and term management.' },
-            { icon: GraduationCap, title: 'Virtual Classrooms', desc: 'Upload materials, run live lessons with screen-share, and auto-record for revision.' },
-            { icon: Calendar, title: 'Assessment Engine', desc: 'Quizzes, tests, and exams with auto-grading, question banks, and cross-class assessments.' },
+            { icon: BookOpen, title: 'Academic Structure', desc: 'Class setup across Primary, JSS, and SS — arms, streams, subjects, and term management.' },
+            { icon: GraduationCap, title: 'Virtual Classrooms', desc: 'Upload materials and share live lesson links for each subject-class.' },
+            { icon: Calendar, title: 'Assessment Engine', desc: 'Quizzes, tests, and exams with auto-grading and a reusable question bank.' },
             { icon: Award, title: 'Results & Report Cards', desc: 'CA + exam scoring, teacher remarks, and downloadable PDF report cards.' },
             { icon: Users, title: 'Parent Portal', desc: 'Multi-child dashboards, performance trends, attendance alerts, and direct messaging.' },
             { icon: MessageSquare, title: 'Communication', desc: 'In-app messaging, school-wide announcements, and multi-channel notifications.' }
@@ -111,15 +111,13 @@ export default function LandingPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
           <div>
             <h2 className="text-3xl font-display font-bold text-brown-800 mb-4">
-              Built for Nigerian connectivity realities
+              Built with Nigerian realities in mind
             </h2>
             <div className="space-y-4">
               {[
-                'Low-bandwidth mode with auto-compressed video and audio-only options',
-                'SMS fallback for critical alerts to parents without smartphones',
-                'Offline mode — download materials on Wi-Fi, submit when back online',
-                'PWA installable on entry-level Android phones',
-                'Paystack integration for card, bank transfer, and USSD payments'
+                'PWA — installable on entry-level Android phones, no app store needed',
+                'Paystack integration for card, bank transfer, and USSD payments',
+                'Email and push notifications for announcements, results, and fee reminders'
               ].map((item) => (
                 <div key={item} className="flex items-start gap-3">
                   <div className="w-6 h-6 rounded-full bg-sage-100 flex items-center justify-center shrink-0 mt-0.5">
@@ -136,7 +134,7 @@ export default function LandingPage() {
               <h3 className="font-display text-xl font-bold text-brown-800 mb-2">Durable Schools</h3>
               <p className="text-brown-400 text-sm mb-6">Academic Excellence • Moral Uprightness • Social Compatibility</p>
               <Link to="/auth?mode=signup" className="btn btn-primary">
-                Create Your School <ArrowRight className="w-4 h-4" />
+                Get Started <ArrowRight className="w-4 h-4" />
               </Link>
             </div>
           </div>
@@ -146,8 +144,8 @@ export default function LandingPage() {
       {/* Footer */}
       <footer className="bg-brown-800 text-cream-200 py-8">
         <div className="max-w-7xl mx-auto px-4 lg:px-8 text-center">
-          <p className="text-sm">Durable Schools — Nigerian K-12 Learning & School Management Platform</p>
-          <p className="text-xs text-cream-300 mt-2">Built with care for Nigerian schools and families.</p>
+          <p className="text-sm">Durable Schools — Primary & Secondary School Management Platform</p>
+          <p className="text-xs text-cream-300 mt-2">Built with care for the Durable Schools community.</p>
         </div>
       </footer>
     </div>
