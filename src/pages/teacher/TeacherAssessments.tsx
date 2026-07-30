@@ -15,7 +15,7 @@ export default function TeacherAssessments() {
   const [selectedAssessment, setSelectedAssessment] = useState<string | null>(null)
   const [form, setForm] = useState({
     classroom_id: '', title: '', type: 'quiz', total_marks: '100', duration_minutes: '30',
-    max_attempts: '1', open_at: '', close_at: '', is_combined: false
+    max_attempts: '1', open_at: '', close_at: '', is_combined: false, combined_classroom_ids: [] as string[]
   })
   const [qForm, setQForm] = useState({
     question_text: '', question_type: 'multiple_choice', options: ['', '', '', ''],
@@ -51,9 +51,20 @@ export default function TeacherAssessments() {
     enabled: !!classrooms && classrooms.length > 0
   })
 
+  const { data: combinedLinks } = useQuery({
+    queryKey: ['my-assessment-classrooms', teacherId],
+    queryFn: async () => {
+      const assessmentIds = (assessments ?? []).map((a) => a.id)
+      if (assessmentIds.length === 0) return []
+      const { data } = await supabase.from('assessment_classrooms').select('assessment_id, classroom:classrooms(name, class:classes(name, arm))').in('assessment_id', assessmentIds)
+      return data ?? []
+    },
+    enabled: !!assessments && assessments.length > 0
+  })
+
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
-    const { error } = await supabase.from('assessments').insert({
+    const { data: created, error } = await supabase.from('assessments').insert({
       classroom_id: form.classroom_id,
       title: form.title,
       type: form.type,
@@ -63,11 +74,18 @@ export default function TeacherAssessments() {
       open_at: form.open_at || null,
       close_at: form.close_at || null,
       is_combined: form.is_combined
-    })
+    }).select('id').single()
     if (error) { toast.error(error.message); return }
+
+    if (form.is_combined && form.combined_classroom_ids.length > 0) {
+      const links = form.combined_classroom_ids.map((classroomId) => ({ assessment_id: created.id, classroom_id: classroomId }))
+      const { error: linkError } = await supabase.from('assessment_classrooms').insert(links)
+      if (linkError) toast.error(`Assessment created, but linking other classes failed: ${linkError.message}`)
+    }
+
     toast.success('Assessment created')
     setModalOpen(false)
-    setForm({ classroom_id: '', title: '', type: 'quiz', total_marks: '100', duration_minutes: '30', max_attempts: '1', open_at: '', close_at: '', is_combined: false })
+    setForm({ classroom_id: '', title: '', type: 'quiz', total_marks: '100', duration_minutes: '30', max_attempts: '1', open_at: '', close_at: '', is_combined: false, combined_classroom_ids: [] })
     queryClient.invalidateQueries({ queryKey: ['my-assessments', teacherId] })
   }
 
@@ -128,6 +146,15 @@ export default function TeacherAssessments() {
                     {a.classroom?.subject?.name} • {a.classroom?.class?.name} {a.classroom?.class?.arm} •
                     {a.type} • {a.total_marks} marks
                   </p>
+                  {(() => {
+                    const linked = (combinedLinks ?? []).filter((l: any) => l.assessment_id === a.id)
+                    if (linked.length === 0) return null
+                    return (
+                      <p className="text-xs text-brown-400 mt-1">
+                        Shared with: {linked.map((l: any) => `${l.classroom?.class?.name} ${l.classroom?.class?.arm}`).join(', ')}
+                      </p>
+                    )
+                  })()}
                 </div>
                 <div className="flex items-center gap-2">
                   <span className={`badge ${a.is_published ? 'badge-sage' : 'badge-brown'}`}>
@@ -199,9 +226,41 @@ export default function TeacherAssessments() {
             </div>
           </div>
           <label className="flex items-center gap-2 cursor-pointer">
-            <input type="checkbox" checked={form.is_combined} onChange={(e) => setForm({ ...form, is_combined: e.target.checked })} className="rounded" />
+            <input type="checkbox" checked={form.is_combined} onChange={(e) => setForm({ ...form, is_combined: e.target.checked, combined_classroom_ids: [] })} className="rounded" />
             <span className="text-sm text-brown-600">Combined assessment (cross-class)</span>
           </label>
+          {form.is_combined && (
+            <div>
+              <label className="label">Also share with:</label>
+              {(() => {
+                const primary = classrooms?.find((c) => c.id === form.classroom_id)
+                const candidates = classrooms?.filter((c) => c.id !== form.classroom_id && c.subject_id === primary?.subject_id) ?? []
+                if (!form.classroom_id) return <p className="text-xs text-brown-400">Pick a class above first.</p>
+                if (candidates.length === 0) return <p className="text-xs text-brown-400">No other classes you teach share this subject.</p>
+                return (
+                  <div className="space-y-1">
+                    {candidates.map((c: any) => (
+                      <label key={c.id} className="flex items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={form.combined_classroom_ids.includes(c.id)}
+                          onChange={() =>
+                            setForm((prev) => ({
+                              ...prev,
+                              combined_classroom_ids: prev.combined_classroom_ids.includes(c.id)
+                                ? prev.combined_classroom_ids.filter((id) => id !== c.id)
+                                : [...prev.combined_classroom_ids, c.id]
+                            }))
+                          }
+                        />
+                        {c.class?.name} {c.class?.arm}
+                      </label>
+                    ))}
+                  </div>
+                )
+              })()}
+            </div>
+          )}
           <button type="submit" className="btn btn-primary w-full">Create Assessment</button>
         </form>
       </Modal>
