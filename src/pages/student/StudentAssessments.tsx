@@ -41,16 +41,40 @@ export default function StudentAssessments() {
     queryKey: ['student-assessments-list', studentId],
     queryFn: async () => {
       if (!classrooms || classrooms.length === 0) return []
-      const { data } = await supabase
+      const classroomIds = classrooms.map((c) => c.id)
+
+      const { data: direct } = await supabase
         .from('assessments')
         .select(`
           id, title, type, total_marks, duration_minutes, open_at, close_at, is_published,
           classroom:classrooms(name, subject:subjects(name))
         `)
         .eq('is_published', true)
-        .in('classroom_id', classrooms.map((c) => c.id))
-        .order('open_at', { ascending: true })
-      return data ?? []
+        .in('classroom_id', classroomIds)
+
+      const { data: combinedLinks } = await supabase
+        .from('assessment_classrooms')
+        .select('assessment_id')
+        .in('classroom_id', classroomIds)
+
+      const combinedIds = [...new Set((combinedLinks ?? []).map((l) => l.assessment_id))]
+      let combined: any[] = []
+      if (combinedIds.length > 0) {
+        const { data } = await supabase
+          .from('assessments')
+          .select(`
+            id, title, type, total_marks, duration_minutes, open_at, close_at, is_published,
+            classroom:classrooms(name, subject:subjects(name))
+          `)
+          .eq('is_published', true)
+          .in('id', combinedIds)
+        combined = data ?? []
+      }
+
+      const merged = [...(direct ?? [])]
+      combined.forEach((c) => { if (!merged.some((m) => m.id === c.id)) merged.push(c) })
+      merged.sort((a, b) => new Date(a.open_at ?? 0).getTime() - new Date(b.open_at ?? 0).getTime())
+      return merged
     },
     enabled: !!classrooms && classrooms.length > 0
   })
