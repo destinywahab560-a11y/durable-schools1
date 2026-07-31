@@ -187,22 +187,24 @@ export default function AdminSubjects() {
             <input value={code} onChange={(e) => setCode(e.target.value)} className="input" placeholder="e.g. MTH101" />
           </div>
 
-          <div>
-            <label className="label">Senior Secondary Streams</label>
-            <p className="text-xs text-brown-400 mb-2">Check any that apply — this subject will automatically cover every SS1–SS3 class in the streams you pick.</p>
-            <div className="flex gap-3">
-              {SS_STREAMS.map((stream) => (
-                <label key={stream} className="flex items-center gap-2 text-sm">
-                  <input type="checkbox" checked={selectedStreams.includes(stream)} onChange={() => toggleStream(stream)} />
-                  {stream}
-                </label>
-              ))}
+          {classes?.some((c) => c.level === 'ss') && (
+            <div>
+              <label className="label">Senior Secondary Streams</label>
+              <p className="text-xs text-brown-400 mb-2">Check any that apply — this subject will automatically cover every SS1–SS3 class in the streams you pick.</p>
+              <div className="flex gap-3">
+                {SS_STREAMS.map((stream) => (
+                  <label key={stream} className="flex items-center gap-2 text-sm">
+                    <input type="checkbox" checked={selectedStreams.includes(stream)} onChange={() => toggleStream(stream)} />
+                    {stream}
+                  </label>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           {nonSsClasses.length > 0 && (
             <div>
-              <label className="label">Specific Classes (Primary / JSS)</label>
+              <label className="label">Specific Classes</label>
               <div className="grid grid-cols-2 gap-1 max-h-40 overflow-y-auto">
                 {nonSsClasses.map((c) => (
                   <label key={c.id} className="flex items-center gap-2 text-sm">
