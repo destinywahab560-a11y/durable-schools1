@@ -5,12 +5,13 @@ import { PageHeader, Spinner } from '@/components/ui'
 import { getInitials } from '@/lib/utils'
 import { enablePushNotifications } from '@/lib/push'
 import toast from 'react-hot-toast'
-import { User, Mail, Phone, Save, Bell } from 'lucide-react'
+import { User, Mail, Phone, Save, Bell, Camera } from 'lucide-react'
 
 export default function ProfilePage() {
   const { profile, refreshProfile } = useAuthStore()
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [uploadingPhoto, setUploadingPhoto] = useState(false)
   const [form, setForm] = useState({
     first_name: profile?.first_name ?? '',
     last_name: profile?.last_name ?? '',
@@ -47,6 +48,27 @@ export default function ProfilePage() {
     refreshProfile()
   }
 
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !profile?.id) return
+    setUploadingPhoto(true)
+    const ext = file.name.split('.').pop()
+    const path = `${profile.id}/avatar.${ext}`
+    const { error: uploadError } = await supabase.storage.from('avatars').upload(path, file, { upsert: true })
+    if (uploadError) { toast.error(uploadError.message); setUploadingPhoto(false); return }
+
+    const { data: publicUrlData } = supabase.storage.from('avatars').getPublicUrl(path)
+    // Bust cache so the new photo shows immediately, since the filename stays the same
+    const photoUrl = `${publicUrlData.publicUrl}?t=${Date.now()}`
+
+    const { error: updateError } = await supabase.from('profiles').update({ photo_url: photoUrl }).eq('id', profile.id)
+    setUploadingPhoto(false)
+    if (updateError) { toast.error(updateError.message); return }
+
+    toast.success('Profile picture updated!')
+    await refreshProfile()
+  }
+
   const [enablingPush, setEnablingPush] = useState(false)
   const handleEnablePush = async () => {
     if (!profile?.id) return
@@ -72,8 +94,22 @@ export default function ProfilePage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="card text-center">
-          <div className="w-24 h-24 rounded-full bg-brown-600 text-cream-100 flex items-center justify-center text-2xl font-bold mx-auto mb-4">
-            {getInitials(`${profile.first_name} ${profile.last_name}`)}
+          <div className="relative w-24 h-24 mx-auto mb-4">
+            {profile.photo_url ? (
+              <img src={profile.photo_url} alt="Profile" className="w-24 h-24 rounded-full object-cover" />
+            ) : (
+              <div className="w-24 h-24 rounded-full bg-brown-600 text-cream-100 flex items-center justify-center text-2xl font-bold">
+                {getInitials(`${profile.first_name} ${profile.last_name}`)}
+              </div>
+            )}
+            <label className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-brown-700 text-cream-100 flex items-center justify-center cursor-pointer hover:bg-brown-800" aria-label="Change profile picture">
+              {uploadingPhoto ? (
+                <div className="w-4 h-4 border-2 border-cream-100 border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <Camera className="w-4 h-4" />
+              )}
+              <input type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} disabled={uploadingPhoto} />
+            </label>
           </div>
           <p className="font-semibold text-brown-800 text-lg">{profile.first_name} {profile.last_name}</p>
           <span className="badge badge-brown mt-2 capitalize">{profile.role}</span>
@@ -105,18 +141,22 @@ export default function ProfilePage() {
                 <p className="text-xs text-brown-400 mb-2">Pick as many as you'd like — you'll get updates through all of them.</p>
                 <div className="grid grid-cols-2 gap-2">
                   {[
-                    { value: 'email', label: 'Email' },
-                    { value: 'push', label: 'Push Notification' },
-                    { value: 'sms', label: 'SMS' },
-                    { value: 'whatsapp', label: 'WhatsApp' }
+                    { value: 'email', label: 'Email', comingSoon: false },
+                    { value: 'push', label: 'Push Notification', comingSoon: false },
+                    { value: 'sms', label: 'SMS', comingSoon: true },
+                    { value: 'whatsapp', label: 'WhatsApp', comingSoon: true }
                   ].map((ch) => (
-                    <label key={ch.value} className="flex items-center gap-2 text-sm p-2 rounded-lg bg-cream-100">
+                    <label key={ch.value} className={`flex items-center gap-2 text-sm p-2 rounded-lg bg-cream-100 ${ch.comingSoon ? 'opacity-60' : ''}`}>
                       <input
                         type="checkbox"
+                        disabled={ch.comingSoon}
                         checked={form.notification_channels.includes(ch.value)}
                         onChange={() => toggleChannel(ch.value)}
                       />
-                      {ch.label}
+                      <span>
+                        {ch.label}
+                        {ch.comingSoon && <span className="block text-xs text-brown-400">Coming soon</span>}
+                      </span>
                     </label>
                   ))}
                 </div>
