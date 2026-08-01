@@ -15,7 +15,7 @@ export default function AdminStudents() {
   const [modalOpen, setModalOpen] = useState(false)
   const [form, setForm] = useState({
     first_name: '', last_name: '', email: '', phone: '', password: '',
-    admission_number: '', class_id: '', parent_email: ''
+    admission_number: '', class_id: ''
   })
 
   const { data: school } = useQuery({
@@ -82,13 +82,6 @@ export default function AdminStudents() {
       })
       if (profileError) throw profileError
 
-      let parentId: string | null = null
-      if (form.parent_email) {
-        const { data: parent } = await supabase
-          .from('profiles').select('id').eq('email', form.parent_email).maybeSingle()
-        if (parent) parentId = parent.id
-      }
-
       const { data: session } = await supabase
         .from('academic_sessions').select('id').eq('school_id', schoolId).eq('is_current', true).maybeSingle()
       if (!session) throw new Error('No current academic session is set. Go to Sessions & Terms and mark one as current before enrolling students.')
@@ -97,14 +90,13 @@ export default function AdminStudents() {
         student_id: authData.user.id,
         class_id: form.class_id,
         session_id: session.id,
-        admission_number: form.admission_number || null,
-        parent_id: parentId
+        admission_number: form.admission_number || null
       })
       if (enrollError) throw enrollError
 
       toast.success('Student enrolled')
       setModalOpen(false)
-      setForm({ first_name: '', last_name: '', email: '', phone: '', password: '', admission_number: '', class_id: '', parent_email: '' })
+      setForm({ first_name: '', last_name: '', email: '', phone: '', password: '', admission_number: '', class_id: '' })
       queryClient.invalidateQueries({ queryKey: ['students', schoolId] })
     } catch (err) {
       console.error('Enroll student error:', err)
@@ -140,16 +132,16 @@ export default function AdminStudents() {
 
   const generateTempPassword = () => Math.random().toString(36).slice(-4) + Math.random().toString(36).slice(-4).toUpperCase()
 
-  type BulkRow = { first_name: string; last_name: string; email: string; phone: string; parent_email: string }
+  type BulkRow = { first_name: string; last_name: string; email: string; phone: string }
   type BulkResult = { first_name: string; last_name: string; email: string; admission_number: string; password: string; success: boolean; error?: string }
 
   const [bulkModalOpen, setBulkModalOpen] = useState(false)
   const [bulkClassId, setBulkClassId] = useState('')
-  const [bulkRows, setBulkRows] = useState<BulkRow[]>([{ first_name: '', last_name: '', email: '', phone: '', parent_email: '' }])
+  const [bulkRows, setBulkRows] = useState<BulkRow[]>([{ first_name: '', last_name: '', email: '', phone: '' }])
   const [bulkResults, setBulkResults] = useState<BulkResult[] | null>(null)
   const [bulkSubmitting, setBulkSubmitting] = useState(false)
 
-  const addBulkRow = () => setBulkRows((prev) => [...prev, { first_name: '', last_name: '', email: '', phone: '', parent_email: '' }])
+  const addBulkRow = () => setBulkRows((prev) => [...prev, { first_name: '', last_name: '', email: '', phone: '' }])
   const removeBulkRow = (index: number) => setBulkRows((prev) => prev.filter((_, i) => i !== index))
   const updateBulkRow = (index: number, field: keyof BulkRow, value: string) => {
     setBulkRows((prev) => prev.map((row, i) => (i === index ? { ...row, [field]: value } : row)))
@@ -169,8 +161,7 @@ export default function AdminStudents() {
             first_name: r.first_name || '',
             last_name: r.last_name || '',
             email: r.email || '',
-            phone: r.phone || '',
-            parent_email: r.parent_email || ''
+            phone: r.phone || ''
           }))
         if (parsed.length === 0) {
           toast.error('No valid rows found — check the CSV has first_name, last_name, email columns.')
@@ -188,7 +179,7 @@ export default function AdminStudents() {
   }
 
   const downloadCsvTemplate = () => {
-    const csv = 'first_name,last_name,email,phone,parent_email\nJohn,Doe,john.doe@example.com,08012345678,parent@example.com\n'
+    const csv = 'first_name,last_name,email,phone\nJohn,Doe,john.doe@example.com,08012345678\n'
     const blob = new Blob([csv], { type: 'text/csv' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -227,15 +218,9 @@ export default function AdminStudents() {
         })
         if (profileError) throw profileError
 
-        let parentId: string | null = null
-        if (row.parent_email) {
-          const { data: parent } = await supabase.from('profiles').select('id').eq('email', row.parent_email).maybeSingle()
-          if (parent) parentId = parent.id
-        }
-
         const { error: enrollError } = await supabase.from('student_enrollments').insert({
           student_id: authData.user.id, class_id: bulkClassId, session_id: session.id,
-          admission_number: admissionNumber || null, parent_id: parentId
+          admission_number: admissionNumber || null
         })
         if (enrollError) throw enrollError
 
@@ -256,7 +241,7 @@ export default function AdminStudents() {
   const closeBulkModal = () => {
     setBulkModalOpen(false)
     setBulkClassId('')
-    setBulkRows([{ first_name: '', last_name: '', email: '', phone: '', parent_email: '' }])
+    setBulkRows([{ first_name: '', last_name: '', email: '', phone: '' }])
     setBulkResults(null)
   }
 
@@ -420,10 +405,6 @@ export default function AdminStudents() {
               </select>
             </div>
           </div>
-          <div>
-            <label className="label">Parent Email (optional — to link parent)</label>
-            <input type="email" value={form.parent_email} onChange={(e) => setForm({ ...form, parent_email: e.target.value })} className="input" placeholder="parent@email.com" />
-          </div>
           <button type="submit" className="btn btn-primary w-full">Enroll Student</button>
         </form>
       </Modal>
@@ -483,9 +464,8 @@ export default function AdminStudents() {
                 <div key={i} className="grid grid-cols-12 gap-2 items-center p-2 rounded-lg bg-cream-100">
                   <input placeholder="First name" value={row.first_name} onChange={(e) => updateBulkRow(i, 'first_name', e.target.value)} className="input col-span-2 text-sm" />
                   <input placeholder="Last name" value={row.last_name} onChange={(e) => updateBulkRow(i, 'last_name', e.target.value)} className="input col-span-2 text-sm" />
-                  <input placeholder="Email" type="email" value={row.email} onChange={(e) => updateBulkRow(i, 'email', e.target.value)} className="input col-span-3 text-sm" />
-                  <input placeholder="Phone (opt.)" value={row.phone} onChange={(e) => updateBulkRow(i, 'phone', e.target.value)} className="input col-span-2 text-sm" />
-                  <input placeholder="Parent email (opt.)" type="email" value={row.parent_email} onChange={(e) => updateBulkRow(i, 'parent_email', e.target.value)} className="input col-span-2 text-sm" />
+                  <input placeholder="Email" type="email" value={row.email} onChange={(e) => updateBulkRow(i, 'email', e.target.value)} className="input col-span-4 text-sm" />
+                  <input placeholder="Phone (opt.)" value={row.phone} onChange={(e) => updateBulkRow(i, 'phone', e.target.value)} className="input col-span-3 text-sm" />
                   <button type="button" onClick={() => removeBulkRow(i)} className="col-span-1 p-2 rounded-lg hover:bg-error-50 text-error-500" aria-label="Remove row">
                     <Trash2 className="w-4 h-4" />
                   </button>
