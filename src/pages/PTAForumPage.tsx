@@ -54,7 +54,7 @@ export default function PTAForumPage() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!forum?.id) return
+    if (!forum?.id) { toast.error("No PTA space is set up for your school yet — contact support."); return }
     const { error } = await supabase.from('forum_posts').insert({
       forum_id: forum.id,
       author_id: profile?.id,
