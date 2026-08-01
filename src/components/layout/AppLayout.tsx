@@ -201,9 +201,13 @@ export default function AppLayout() {
               )}
             </button>
             <span className="badge badge-brown hidden sm:inline-flex">{roleLabel}</span>
-            <div className="w-10 h-10 rounded-full bg-brown-600 text-cream-100 flex items-center justify-center font-semibold text-sm">
-              {getInitials(fullName)}
-            </div>
+            {profile?.photo_url ? (
+              <img src={profile.photo_url} alt={fullName} className="w-10 h-10 rounded-full object-cover" />
+            ) : (
+              <div className="w-10 h-10 rounded-full bg-brown-600 text-cream-100 flex items-center justify-center font-semibold text-sm">
+                {getInitials(fullName)}
+              </div>
+            )}
           </div>
         </header>
 
