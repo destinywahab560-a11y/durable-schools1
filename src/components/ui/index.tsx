@@ -1,9 +1,27 @@
-import { cn } from '@/lib/utils'
+import { cn, getInitials } from '@/lib/utils'
 
 interface PageHeaderProps {
   title: string
   subtitle?: string
   action?: React.ReactNode
+}
+
+interface AvatarProps {
+  photoUrl?: string | null
+  name: string
+  size?: 'xs' | 'sm' | 'md' | 'lg'
+}
+
+export function Avatar({ photoUrl, name, size = 'sm' }: AvatarProps) {
+  const sizeClasses = { xs: 'w-6 h-6 text-xs', sm: 'w-9 h-9 text-sm', md: 'w-10 h-10 text-sm', lg: 'w-24 h-24 text-2xl' }
+  if (photoUrl) {
+    return <img src={photoUrl} alt={name} className={cn('rounded-full object-cover shrink-0', sizeClasses[size])} />
+  }
+  return (
+    <div className={cn('rounded-full bg-brown-600 text-cream-100 flex items-center justify-center font-semibold shrink-0', sizeClasses[size])}>
+      {getInitials(name)}
+    </div>
+  )
 }
 
 export function PageHeader({ title, subtitle, action }: PageHeaderProps) {
