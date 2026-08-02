@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/stores/auth'
-import { PageHeader, Spinner } from '@/components/ui'
+import { PageHeader, Spinner, Avatar } from '@/components/ui'
 import { formatDateTime } from '@/lib/utils'
 import toast from 'react-hot-toast'
 import { ArrowLeft, Trash2 } from 'lucide-react'
@@ -19,7 +19,7 @@ export default function PTAThreadPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('forum_posts')
-        .select('id, title, body, created_at, forum_id, author:profiles!author_id(first_name, last_name, role)')
+        .select('id, title, body, created_at, forum_id, author:profiles!author_id(first_name, last_name, role, photo_url)')
         .eq('id', id)
         .maybeSingle()
       if (error) throw error
@@ -33,7 +33,7 @@ export default function PTAThreadPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('forum_posts')
-        .select('id, body, created_at, author_id, author:profiles!author_id(first_name, last_name, role)')
+        .select('id, body, created_at, author_id, author:profiles!author_id(first_name, last_name, role, photo_url)')
         .eq('parent_post_id', id)
         .order('created_at', { ascending: true })
       if (error) throw error
@@ -72,7 +72,10 @@ export default function PTAThreadPage() {
       <Link to="/pta" className="flex items-center gap-1 text-sm text-brown-500 hover:text-brown-700 mb-4">
         <ArrowLeft className="w-4 h-4" /> Back to PTA Discussion
       </Link>
-      <PageHeader title={topic.title} subtitle={`${(topic.author as any)?.first_name} ${(topic.author as any)?.last_name} · ${(topic.author as any)?.role} · ${formatDateTime(topic.created_at)}`} />
+      <div className="flex items-start gap-3 mb-6">
+        <Avatar photoUrl={(topic.author as any)?.photo_url} name={`${(topic.author as any)?.first_name} ${(topic.author as any)?.last_name}`} size="md" />
+        <PageHeader title={topic.title} subtitle={`${(topic.author as any)?.first_name} ${(topic.author as any)?.last_name} · ${(topic.author as any)?.role} · ${formatDateTime(topic.created_at)}`} />
+      </div>
 
       <div className="card mb-6">
         <p className="text-brown-700 whitespace-pre-wrap">{topic.body}</p>
@@ -81,18 +84,21 @@ export default function PTAThreadPage() {
       <h3 className="font-semibold text-brown-800 mb-3">{replies?.length ?? 0} {replies?.length === 1 ? 'Reply' : 'Replies'}</h3>
       <div className="space-y-3 mb-6">
         {replies?.map((r) => (
-          <div key={r.id} className="card">
-            <div className="flex items-start justify-between">
-              <p className="text-brown-700 whitespace-pre-wrap flex-1">{r.body}</p>
-              {(r.author_id === profile?.id || profile?.role === 'admin') && (
-                <button onClick={() => handleDeleteReply(r.id)} className="p-1 text-error-400 hover:text-error-600" aria-label="Delete reply">
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              )}
+          <div key={r.id} className="card flex gap-3">
+            <Avatar photoUrl={(r.author as any)?.photo_url} name={`${(r.author as any)?.first_name} ${(r.author as any)?.last_name}`} />
+            <div className="flex-1">
+              <div className="flex items-start justify-between">
+                <p className="text-brown-700 whitespace-pre-wrap flex-1">{r.body}</p>
+                {(r.author_id === profile?.id || profile?.role === 'admin') && (
+                  <button onClick={() => handleDeleteReply(r.id)} className="p-1 text-error-400 hover:text-error-600" aria-label="Delete reply">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+              <p className="text-xs text-brown-400 mt-2">
+                {(r.author as any)?.first_name} {(r.author as any)?.last_name} · {(r.author as any)?.role} · {formatDateTime(r.created_at)}
+              </p>
             </div>
-            <p className="text-xs text-brown-400 mt-2">
-              {(r.author as any)?.first_name} {(r.author as any)?.last_name} · {(r.author as any)?.role} · {formatDateTime(r.created_at)}
-            </p>
           </div>
         ))}
       </div>
