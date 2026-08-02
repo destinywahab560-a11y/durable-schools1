@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/stores/auth'
-import { PageHeader, Spinner, EmptyState } from '@/components/ui'
-import { formatDateTime, getInitials } from '@/lib/utils'
+import { PageHeader, Spinner, EmptyState, Avatar } from '@/components/ui'
+import { formatDateTime } from '@/lib/utils'
 import toast from 'react-hot-toast'
 import { MessageSquare, Send } from 'lucide-react'
 
@@ -32,7 +32,7 @@ export default function StudentMessages() {
       if (!profile?.id || !profile?.school_id) return
       const { data: teachers } = await supabase
         .from('teacher_assignments')
-        .select('teacher:profiles(id, first_name, last_name)')
+        .select('teacher:profiles(id, first_name, last_name, photo_url)')
         .eq('status', 'approved')
       const teacherMap = new Map<string, any>()
       teachers?.forEach((t: any) => {
@@ -73,9 +73,7 @@ export default function StudentMessages() {
                     selectedContact === c.id ? 'bg-brown-100' : 'hover:bg-cream-200'
                   }`}
                 >
-                  <div className="w-10 h-10 rounded-full bg-brown-600 text-cream-100 flex items-center justify-center text-sm font-semibold">
-                    {getInitials(`${c.first_name} ${c.last_name}`)}
-                  </div>
+                  <Avatar photoUrl={c.photo_url} name={`${c.first_name} ${c.last_name}`} size="md" />
                   <div className="text-left">
                     <p className="text-sm font-medium text-brown-700">{c.first_name} {c.last_name}</p>
                     <p className="text-xs text-brown-400">Teacher</p>
