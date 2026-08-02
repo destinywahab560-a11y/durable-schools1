@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/stores/auth'
-import { PageHeader, Modal, Spinner, EmptyState } from '@/components/ui'
+import { PageHeader, Modal, Spinner, EmptyState, Avatar } from '@/components/ui'
 import { formatDateTime } from '@/lib/utils'
 import toast from 'react-hot-toast'
 import { Users, Plus, MessageCircle } from 'lucide-react'
@@ -29,7 +29,7 @@ export default function PTAForumPage() {
     queryFn: async () => {
       const { data: posts, error } = await supabase
         .from('forum_posts')
-        .select('id, title, body, created_at, author:profiles!author_id(first_name, last_name, role)')
+        .select('id, title, body, created_at, author:profiles!author_id(first_name, last_name, role, photo_url)')
         .eq('forum_id', forum?.id)
         .is('parent_post_id', null)
         .order('created_at', { ascending: false })
@@ -81,13 +81,16 @@ export default function PTAForumPage() {
       {topics && topics.length > 0 ? (
         <div className="space-y-3">
           {topics.map((t: any) => (
-            <Link key={t.id} to={`/pta/${t.id}`} className="card block hover:border-brown-300 transition-colors">
-              <p className="font-semibold text-brown-800">{t.title}</p>
-              <p className="text-sm text-brown-500 line-clamp-2 mt-1">{t.body}</p>
-              <div className="flex items-center gap-3 mt-2 text-xs text-brown-400">
-                <span>{t.author?.first_name} {t.author?.last_name} · {t.author?.role}</span>
-                <span>{formatDateTime(t.created_at)}</span>
-                <span className="flex items-center gap-1"><MessageCircle className="w-3 h-3" /> {t.replyCount}</span>
+            <Link key={t.id} to={`/pta/${t.id}`} className="card flex gap-3 hover:border-brown-300 transition-colors">
+              <Avatar photoUrl={t.author?.photo_url} name={`${t.author?.first_name} ${t.author?.last_name}`} />
+              <div className="flex-1">
+                <p className="font-semibold text-brown-800">{t.title}</p>
+                <p className="text-sm text-brown-500 line-clamp-2 mt-1">{t.body}</p>
+                <div className="flex items-center gap-3 mt-2 text-xs text-brown-400">
+                  <span>{t.author?.first_name} {t.author?.last_name} · {t.author?.role}</span>
+                  <span>{formatDateTime(t.created_at)}</span>
+                  <span className="flex items-center gap-1"><MessageCircle className="w-3 h-3" /> {t.replyCount}</span>
+                </div>
               </div>
             </Link>
           ))}
