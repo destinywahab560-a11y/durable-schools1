@@ -5,7 +5,7 @@ import { useAuthStore } from '@/stores/auth'
 import { PageHeader, Spinner, EmptyState, Avatar } from '@/components/ui'
 import { formatDateTime } from '@/lib/utils'
 import toast from 'react-hot-toast'
-import { MessageSquare, Send } from 'lucide-react'
+import { MessageSquare, Send, MoreVertical } from 'lucide-react'
 
 export default function ParentMessages() {
   const { profile } = useAuthStore()
@@ -13,6 +13,7 @@ export default function ParentMessages() {
   const [selectedContact, setSelectedContact] = useState<string | null>(null)
   const [message, setMessage] = useState('')
   const [contacts, setContacts] = useState<any[]>([])
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null)
 
   const { data: messages, refetch } = useQuery({
     queryKey: ['parent-messages', parentId, selectedContact],
@@ -23,7 +24,11 @@ export default function ParentMessages() {
         .select('*')
         .or(`and(sender_id.eq.${parentId},receiver_id.eq.${selectedContact}),and(sender_id.eq.${selectedContact},receiver_id.eq.${parentId})`)
         .order('created_at', { ascending: true })
-      return data ?? []
+      return (data ?? []).filter((m) => {
+        if (m.sender_id === parentId && m.deleted_by_sender) return false
+        if (m.receiver_id === parentId && m.deleted_by_receiver) return false
+        return true
+      })
     },
     enabled: !!selectedContact
   })
@@ -73,6 +78,22 @@ export default function ParentMessages() {
     refetch()
   }
 
+  const deleteForMe = async (messageId: string, iAmSender: boolean) => {
+    const { error } = await supabase.from('messages')
+      .update(iAmSender ? { deleted_by_sender: true } : { deleted_by_receiver: true })
+      .eq('id', messageId)
+    if (error) { toast.error(error.message); return }
+    setOpenMenuId(null)
+    refetch()
+  }
+
+  const deleteForEveryone = async (messageId: string) => {
+    const { error } = await supabase.from('messages').delete().eq('id', messageId)
+    if (error) { toast.error(error.message); return }
+    setOpenMenuId(null)
+    refetch()
+  }
+
   return (
     <div>
       <PageHeader title="Messages" subtitle="Communicate with your children's teachers" />
@@ -108,18 +129,40 @@ export default function ParentMessages() {
             <>
               <div className="flex-1 overflow-y-auto space-y-3 mb-4">
                 {messages && messages.length > 0 ? (
-                  messages.map((m) => (
-                    <div key={m.id} className={`flex ${m.sender_id === parentId ? 'justify-end' : 'justify-start'}`}>
-                      <div className={`max-w-[70%] px-4 py-2 rounded-lg ${
-                        m.sender_id === parentId ? 'bg-brown-600 text-cream-100' : 'bg-cream-200 text-brown-700'
-                      }`}>
-                        <p className="text-sm">{m.body}</p>
-                        <p className={`text-xs mt-1 ${m.sender_id === parentId ? 'text-cream-300' : 'text-brown-300'}`}>
-                          {formatDateTime(m.created_at)}
-                        </p>
+                  messages.map((m) => {
+                    const iAmSender = m.sender_id === parentId
+                    return (
+                      <div key={m.id} className={`flex ${iAmSender ? 'justify-end' : 'justify-start'}`}>
+                        <div className="relative group max-w-[70%]">
+                          <div className={`px-4 py-2 rounded-lg ${iAmSender ? 'bg-brown-600 text-cream-100' : 'bg-cream-200 text-brown-700'}`}>
+                            <p className="text-sm">{m.body}</p>
+                            <p className={`text-xs mt-1 ${iAmSender ? 'text-cream-300' : 'text-brown-300'}`}>
+                              {formatDateTime(m.created_at)}
+                            </p>
+                          </div>
+                          <button
+                            onClick={() => setOpenMenuId(openMenuId === m.id ? null : m.id)}
+                            className={`absolute top-1 ${iAmSender ? '-left-7' : '-right-7'} p-1 rounded text-brown-300 hover:text-brown-600 opacity-0 group-hover:opacity-100`}
+                            aria-label="Message options"
+                          >
+                            <MoreVertical className="w-4 h-4" />
+                          </button>
+                          {openMenuId === m.id && (
+                            <div className={`absolute top-6 ${iAmSender ? 'right-0' : 'left-0'} bg-white border border-cream-300 rounded-lg shadow-lg z-10 text-sm overflow-hidden`}>
+                              <button onClick={() => deleteForMe(m.id, iAmSender)} className="block w-full text-left px-4 py-2 hover:bg-cream-100 text-brown-700 whitespace-nowrap">
+                                Delete for me
+                              </button>
+                              {iAmSender && (
+                                <button onClick={() => deleteForEveryone(m.id)} className="block w-full text-left px-4 py-2 hover:bg-cream-100 text-error-600 whitespace-nowrap">
+                                  Delete for everyone
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))
+                    )
+                  })
                 ) : (
                   <p className="text-sm text-brown-400 text-center py-8">No messages yet. Start the conversation!</p>
                 )}
