@@ -231,7 +231,7 @@ export default function AuthPage() {
                   {role !== 'admin' && (
                     <div>
                       <label className="label">School Code</label>
-                      <input required value={schoolCode} onChange={(e) => setSchoolCode(e.target.value)} className="input" placeholder="e.g. DFS-PRIMARY" />
+                      <input required value={schoolCode} onChange={(e) => setSchoolCode(e.target.value)} className="input" placeholder="" />
                       <p className="text-xs text-brown-400 mt-1">Ask your school administrator for your branch's code.</p>
                     </div>
                   )}
